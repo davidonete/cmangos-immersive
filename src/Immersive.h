@@ -1,5 +1,6 @@
 #pragma once
-#include "GossipDef.h"
+
+struct GossipMenuItemData;
 
 namespace immersive
 {
@@ -64,7 +65,6 @@ namespace immersive
         void IncreaseStat(Player *player, uint32 type);
         void ChangeModifier(Player *player, uint32 type);
         void ResetStats(Player *player);
-        void CastPortal(Player *player, bool meetingStone = false);
         void SendMessage(Player *player, const std::string& message);
         uint32 CalculateEffectiveChanceDelta(const Unit* unit);
         void DisableOfflineRespawn();

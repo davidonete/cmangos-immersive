@@ -1,5 +1,6 @@
 #include "immersivepch.h"
 
+#include "GossipDef.h"
 #include "Language.h"
 #include "World.h"
 
