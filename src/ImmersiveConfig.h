@@ -6,35 +6,38 @@ class ImmersiveConfig
 {
 public:
     ImmersiveConfig();
+
     static ImmersiveConfig& instance()
     {
         static ImmersiveConfig instance;
         return instance;
     }
 
-public:
     bool Initialize();
 
-    int serverPort;
+public:
+    bool enabled;
     bool manualAttributes;
     float manualAttributesPercent;
-    int manualAttributesIncrease;
-    float sharedXpPercent;
-    float sharedMoneyPercent;
-    float sharedRepPercent;
+    uint32 manualAttributesIncrease;
+    uint32 manualAttributesCostMult;
+    uint32 manualAttributesMaxPoints;
+    uint32 sharedXpPercent;
+    uint32 sharedMoneyPercent;
+    uint32 sharedRepPercent;
     bool sharedQuests;
     bool fishingBaubles;
-    int sharedPercentRaceRestiction;
-    int sharedPercentClassRestiction;
-    int sharedPercentGuildRestiction;
-    int sharedPercentFactionRestiction;
-    float sharedPercentMinLevel;
-    int attributeLossPerDeath;
+    uint32 sharedPercentRaceRestiction;
+    uint32 sharedPercentClassRestiction;
+    bool sharedPercentGuildRestiction;
+    bool sharedPercentFactionRestiction;
+    uint32 sharedPercentMinLevel;
+    uint32 attributeLossPerDeath;
     float fallDamageMultiplier;
-    int sharedXpPercentLevelDiff;
+    uint32 sharedXpPercentLevelDiff;
     bool scaleModifierWorkaround;
-    int sharedRandomPercent;
-    float pauseRange;
+    uint32 sharedRandomPercent;
+    bool disableOfflineRespawn;
 
 private:
     Config config;

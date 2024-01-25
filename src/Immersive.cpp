@@ -1,6 +1,7 @@
-#include "Immersive.h"
-#include "SharedDefines.h"
+#include "immersivepch.h"
+
 #include "Language.h"
+#include "World.h"
 
 #ifdef ENABLE_MANGOSBOTS
 #include "PlayerbotAIConfig.h"
@@ -10,11 +11,11 @@
 
 using namespace immersive;
 
-map<Stats, string> Immersive::statValues;
+std::map<Stats, std::string> Immersive::statValues;
 
-string formatMoney(uint32 copper)
+std::string formatMoney(uint32 copper)
 {
-    ostringstream out;
+    std::ostringstream out;
     if (!copper)
     {
         out << "0";
@@ -62,8 +63,8 @@ PlayerInfo extraPlayerInfo[MAX_RACES][MAX_CLASSES];
 
 PlayerInfo const* Immersive::GetPlayerInfo(uint32 race, uint32 class_)
 {
-/*
-#ifndef MANGOSBOT_ZERO
+
+#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
     if (class_ == CLASS_SHAMAN && race == RACE_NIGHTELF)
     {
         PlayerInfo const* piSh = sObjectMgr.GetPlayerInfo(RACE_DRAENEI, class_);
@@ -77,7 +78,6 @@ PlayerInfo const* Immersive::GetPlayerInfo(uint32 race, uint32 class_)
         return result;
     }
 #endif
-*/
 
     if (class_ == CLASS_DRUID && race == RACE_TROLL)
     {
@@ -97,9 +97,11 @@ PlayerInfo const* Immersive::GetPlayerInfo(uint32 race, uint32 class_)
 
 void Immersive::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
+    if (!sImmersiveConfig.enabled) 
+        return;
 
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_MANUAL_ATTRIBUTES)) return;
+    if (!sImmersiveConfig.manualAttributes) 
+        return;
 
 #ifdef ENABLE_MANGOSBOTS
     // Don't use custom stats on random bots
@@ -122,7 +124,7 @@ void Immersive::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
 void Immersive::OnGossipSelect(Player *player, WorldObject* source, uint32 gossipListId, GossipMenuItemData *menuData)
 {
     bool closeGossipWindow = false;
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED))
+    if (!sImmersiveConfig.enabled)
     {
         SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         closeGossipWindow = true;
@@ -172,22 +174,6 @@ void Immersive::OnGossipSelect(Player *player, WorldObject* source, uint32 gossi
                 break;
             }
 
-            // Portal
-            case 40:
-            {
-                CastPortal(player);
-                closeGossipWindow = true;
-                break;
-            }
-        
-            // Portal
-            case 41:
-            {
-                CastPortal(player, true);
-                closeGossipWindow = true;
-                break;
-            }
-
             default: break;
         }
     }
@@ -205,97 +191,111 @@ void Immersive::OnGossipSelect(Player *player, WorldObject* source, uint32 gossi
 
 float Immersive::GetFallDamage(Player* player, float zdist, float defaultVal)
 {
-    if(sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED) && player && !player->InBattleGround())
-    {
-#ifdef ENABLE_MANGOSBOTS
-        // Don't apply extra fall damage on bots
-        if (!player->isRealPlayer())
-        {
-            return defaultVal;
-        }
+    if (!sImmersiveConfig.enabled || !player)
+        return defaultVal;
+
+    // Don't get extra fall damage on battlegrounds
+    if (player->InBattleGround())
+        return defaultVal;
+
+#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
+    // Don't get extra fall damage on arenas
+    if (player->InArena())
+        return defaultVal;
 #endif
 
-        return 0.0055f * zdist * zdist * sWorld.getConfig(CONFIG_FLOAT_IMMERSIVE_FALL_DAMAGE_MULT);
+#ifdef ENABLE_MANGOSBOTS
+    // Don't apply extra fall damage on bots
+    if (!player->isRealPlayer())
+    {
+        return defaultVal;
     }
+#endif
 
-    return defaultVal;
+    return 0.0055f * zdist * zdist * sImmersiveConfig.fallDamageMultiplier;
 }
 
 void Immersive::OnDeath(Player *player)
 {
-    if(sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED))
-    {
-        const uint8 lossPerDeath = sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_ATTR_LOSS_PER_DEATH);
-        const uint32 usedStats = GetUsedStats(player);
-        if(lossPerDeath > 0 && usedStats > 0)
-        {
+    if (!sImmersiveConfig.enabled || !player)
+        return;
+
 #ifdef ENABLE_MANGOSBOTS
-            // Don't lose stats on bots
-            if(!player->isRealPlayer())
-            {
-                return;
-            }
+    // Don't lose stats on bots
+    if (!player->isRealPlayer())
+        return;
 #endif
 
-            // Don't lose stats on battlegrounds or arena
-            if (player->InBattleGround() || player->InArena())
-            {
-                return;
-            }
-          
-            map<Stats, int> loss;
-            for (uint8 j = STAT_STRENGTH; j < MAX_STATS; ++j)
-            {
-                loss[(Stats)j] = 0;
-            }
+    // Don't get extra fall damage on battlegrounds
+    if (player->InBattleGround())
+        return;
 
-            const uint32 owner = player->GetObjectGuid().GetRawValue();
-            uint32 pointsToLose = lossPerDeath > usedStats ? usedStats : lossPerDeath;
-            while (pointsToLose > 0)
-            {
-                const Stats statType = (Stats)urand(STAT_STRENGTH, MAX_STATS - 1);
-                const uint32 statValue = GetStatsValue(owner, statType);
-                if(statValue > 0)
-                {
-                    SetStatsValue(owner, statType, statValue - 1);
-                    loss[statType]++;
-                    pointsToLose--;
-                }
-            }
+#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
+    // Don't get extra fall damage on arenas
+    if (player->InArena())
+        return;
+#endif
 
-            ostringstream out;
-            bool first = true;
-            for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
-            {
-                const uint32 value = loss[(Stats)i];
-                if(value > 0)
-                {
-                    if (!first) out << ", "; else first = false;
-                    const uint32 langStat = LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + i;
-                    out << "|cffffa0a0-" << value << "|cffffff00 " << sObjectMgr.GetMangosString(langStat, player->GetSession()->GetSessionDbLocaleIndex());
-                }
-            }
-
-            SendMessage(player, FormatString(
-                        sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_LOST, player->GetSession()->GetSessionDbLocaleIndex()),
-                        out.str().c_str()));
-
-            player->InitStatsForLevel(true);
-            player->UpdateAllStats();
+    const uint8 lossPerDeath = sImmersiveConfig.attributeLossPerDeath;
+    const uint32 usedStats = GetUsedStats(player);
+    if(lossPerDeath > 0 && usedStats > 0)
+    {
+        std::map<Stats, int> loss;
+        for (uint8 j = STAT_STRENGTH; j < MAX_STATS; ++j)
+        {
+            loss[(Stats)j] = 0;
         }
+
+        const uint32 owner = player->GetObjectGuid().GetRawValue();
+        uint32 pointsToLose = lossPerDeath > usedStats ? usedStats : lossPerDeath;
+        while (pointsToLose > 0)
+        {
+            const Stats statType = (Stats)urand(STAT_STRENGTH, MAX_STATS - 1);
+            const uint32 statValue = GetStatsValue(owner, statType);
+            if(statValue > 0)
+            {
+                SetStatsValue(owner, statType, statValue - 1);
+                loss[statType]++;
+                pointsToLose--;
+            }
+        }
+
+        std::ostringstream out;
+        bool first = true;
+        for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
+        {
+            const uint32 value = loss[(Stats)i];
+            if(value > 0)
+            {
+                if (!first) out << ", "; else first = false;
+                const uint32 langStat = LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + i;
+                out << "|cffffa0a0-" << value << "|cffffff00 " << sObjectMgr.GetMangosString(langStat, player->GetSession()->GetSessionDbLocaleIndex());
+            }
+        }
+
+        SendMessage(player, FormatString(
+                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_LOST, player->GetSession()->GetSessionDbLocaleIndex()),
+                    out.str().c_str()));
+
+        player->InitStatsForLevel(true);
+        player->UpdateAllStats();
     }
 }
 
-string percent(Player *player)
+std::string percent(Player *player)
 {
+#ifdef ENABLE_MANGOSBOTS
     return player->GetPlayerbotAI() ? "%" : "%%";
+#else
+    return "%%";
+#endif
 }
 
 void Immersive::PrintHelp(Player *player, bool detailed, bool help)
 {
     uint32 usedStats = GetUsedStats(player);
     uint32 totalStats = GetTotalStats(player);
-    uint32 purchaseCost = GetStatCost(player) * sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_INCREASE);
+    uint32 purchaseCost = GetStatCost(player) * sImmersiveConfig.manualAttributesIncrease;
 
     SendMessage(player, FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AVAILABLE, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -318,7 +318,7 @@ void Immersive::PrintUsedStats(Player* player)
     uint32 owner = player->GetObjectGuid().GetRawValue();
     uint32 modifier = GetModifierValue(owner);
 
-    ostringstream out;
+    std::ostringstream out;
     bool first = true;
     bool used = false;
 
@@ -338,7 +338,7 @@ void Immersive::PrintUsedStats(Player* player)
 
     if (modifier != 100)
     {
-        ostringstream modifierStr; modifierStr << modifier << percent(player);
+        std::ostringstream modifierStr; modifierStr << modifier << percent(player);
         out << " " << FormatString(sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MODIFIER, player->GetSession()->GetSessionDbLocaleIndex()), modifierStr.str().c_str());
     }
 
@@ -349,7 +349,7 @@ void Immersive::PrintUsedStats(Player* player)
 
 void Immersive::PrintSuggestedStats(Player* player)
 {
-    ostringstream out;
+    std::ostringstream out;
     PlayerInfo const* info = GetPlayerInfo(player->getRace(), player->getClass());
     uint8 level = player->GetLevel();
     PlayerLevelInfo levelCInfo = info->levelInfo[level - 1];
@@ -359,7 +359,7 @@ void Immersive::PrintSuggestedStats(Player* player)
     for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
     {
         uint32 value = levelCInfo.stats[i];
-        value = (uint32)floor(value * sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_PCT) / 100.0f);
+        value = (uint32)floor(value * sImmersiveConfig.manualAttributesPercent / 100.0f);
         if (!value) continue;
         if (!first) out << ", "; else first = false;
         const uint32 langStat = LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + i;
@@ -377,13 +377,14 @@ void Immersive::PrintSuggestedStats(Player* player)
 
 void Immersive::ChangeModifier(Player *player, uint32 type)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
+    if (!sImmersiveConfig.enabled) 
+        return;
 
     uint32 owner = player->GetObjectGuid().GetRawValue();
     uint32 value = type * 10;
     SetValue(owner, "modifier", value);
 
-    ostringstream modifierStr; modifierStr << value << percent(player);
+    std::ostringstream modifierStr; modifierStr << value << percent(player);
     if (!value || value == 100)
     {
         modifierStr << " " << sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MOD_DISABLED, player->GetSession()->GetSessionDbLocaleIndex());
@@ -399,7 +400,7 @@ void Immersive::ChangeModifier(Player *player, uint32 type)
 
 void Immersive::IncreaseStat(Player *player, uint32 type)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED))
+    if (!sImmersiveConfig.enabled)
     {
         SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
@@ -410,7 +411,7 @@ void Immersive::IncreaseStat(Player *player, uint32 type)
     uint32 totalStats = GetTotalStats(player);
     uint32 cost = GetStatCost(player);
     uint32 attributePointsAvailable = (totalStats > usedStats ? totalStats - usedStats : 0);
-    uint32 statIncrease = std::min(sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_INCREASE), attributePointsAvailable);
+    uint32 statIncrease = std::min(sImmersiveConfig.manualAttributesIncrease, attributePointsAvailable);
     uint32 purchaseCost = cost * statIncrease;
 
     if (usedStats >= totalStats)
@@ -449,7 +450,7 @@ void Immersive::IncreaseStat(Player *player, uint32 type)
 
 void Immersive::ResetStats(Player *player)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED))
+    if (!sImmersiveConfig.enabled)
     {
         SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
@@ -481,7 +482,7 @@ uint32 Immersive::GetTotalStats(Player *player, uint8 level)
         level = player->GetLevel();
     }
 
-    const uint32 maxStats = sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_MAX_POINTS);
+    const uint32 maxStats = sImmersiveConfig.manualAttributesMaxPoints;
     if(maxStats > 0)
     {
         // Calculate the amount of base stats
@@ -512,8 +513,8 @@ uint32 Immersive::GetTotalStats(Player *player, uint8 level)
             total += 5;
         }
 
-        uint32 byPercent = (uint32)floor(total * sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_PCT) / 100.0f);
-        return byPercent / sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_INCREASE) * sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_INCREASE);
+        uint32 byPercent = (uint32)floor(total * sImmersiveConfig.manualAttributesPercent / 100.0f);
+        return byPercent / sImmersiveConfig.manualAttributesIncrease * sImmersiveConfig.manualAttributesIncrease;
     }
 }
 
@@ -546,10 +547,10 @@ uint32 Immersive::GetStatCost(Player *player, uint8 level, uint32 usedStats)
         }
     }
 
-    return sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_MANUAL_ATTR_COST_MULT) * (usedLevels * usedLevels + 1);
+    return sImmersiveConfig.manualAttributesCostMult * (usedLevels * usedLevels + 1);
 }
 
-uint32 Immersive::GetValue(uint32 owner, string type)
+uint32 Immersive::GetValue(uint32 owner, const std::string& type)
 {
     uint32 value = valueCache[owner][type];
 
@@ -570,7 +571,7 @@ uint32 Immersive::GetValue(uint32 owner, string type)
     return value;
 }
 
-void Immersive::SetValue(uint32 owner, string type, uint32 value)
+void Immersive::SetValue(uint32 owner, const std::string& type, uint32 value)
 {
     valueCache[owner][type] = value;
     CharacterDatabase.DirectPExecute("delete from immersive_values where owner = '%u' and `type` = '%s'",
@@ -601,7 +602,7 @@ uint32 Immersive::GetModifierValue(uint32 owner)
     return modifier;
 }
 
-void Immersive::SendMessage(Player *player, string message)
+void Immersive::SendMessage(Player *player, const std::string& message)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (player->GetPlayerbotAI())
@@ -637,11 +638,22 @@ bool ImmersiveAction::CheckSharedPercentReqs(Player* player, Player* bot)
     return false;
 }
 
+bool IsAlliance(uint8 race)
+{
+    return race == RACE_HUMAN || 
+           race == RACE_DWARF || 
+           race == RACE_NIGHTELF ||
+#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
+           race == RACE_DRAENEI ||
+#endif
+           race == RACE_GNOME;
+}
+
 bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return false;
+    if (!sImmersiveConfig.enabled) return false;
 
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_PCT_MIN_LVL) && (int)player->GetLevel() < sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_PCT_MIN_LVL))
+    if (sImmersiveConfig.sharedPercentMinLevel && (int)player->GetLevel() < sImmersiveConfig.sharedPercentMinLevel)
         return false;
 
     uint8 race1 = player->getRace();
@@ -649,13 +661,13 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
     uint8 race2 = bot->getRace();
     uint8 cls2 = bot->getClass();
 
-    if (sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_SHARED_PCT_GUILD_RESTR) && player->GetGuildId() != bot->GetGuildId())
+    if (sImmersiveConfig.sharedPercentGuildRestiction && player->GetGuildId() != bot->GetGuildId())
         return false;
 
-    if (sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_SHARED_PCT_FACTION_RESTR) && (IsAlliance(player->getRace()) ^ IsAlliance(bot->getRace())))
+    if (sImmersiveConfig.sharedPercentFactionRestiction && (IsAlliance(player->getRace()) ^ IsAlliance(bot->getRace())))
         return false;
 
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_PCT_RACE_RESTR) == 2)
+    if (sImmersiveConfig.sharedPercentRaceRestiction == 2)
     {
         if (race1 == RACE_TROLL) race1 = RACE_ORC;
         if (race1 == RACE_DWARF) race1 = RACE_GNOME;
@@ -664,7 +676,7 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
         if (race2 == RACE_DWARF) race2 = RACE_GNOME;
     }
 
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_PCT_CLASS_RESTR) == 2)
+    if (sImmersiveConfig.sharedPercentClassRestiction == 2)
     {
         if (cls1 == CLASS_PALADIN || cls1 == CLASS_SHAMAN) cls1 = CLASS_WARRIOR;
         if (cls1 == CLASS_HUNTER || cls1 == CLASS_ROGUE) cls1 = CLASS_DRUID;
@@ -675,10 +687,10 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
         if (cls2 == CLASS_PRIEST || cls2 == CLASS_WARLOCK) cls2 = CLASS_MAGE;
     }
 
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_PCT_RACE_RESTR) && race1 != race2)
+    if (sImmersiveConfig.sharedPercentRaceRestiction && race1 != race2)
         return false;
 
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_PCT_CLASS_RESTR) && cls1 != cls2)
+    if (sImmersiveConfig.sharedPercentClassRestiction && cls1 != cls2)
         return false;
 
     return true;
@@ -687,7 +699,7 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
 void Immersive::RunAction(Player* player, ImmersiveAction* action)
 {
     bool first = true, needMsg = false;
-    ostringstream out; out << "|cffffff00";
+    std::ostringstream out; out << "|cffffff00";
 #ifdef ENABLE_MANGOSBOTS
     for (PlayerBotMap::const_iterator i = player->GetPlayerbotMgr()->GetPlayerBotsBegin(); i != player->GetPlayerbotMgr()->GetPlayerBotsEnd(); ++i)
     {
@@ -709,11 +721,12 @@ void Immersive::RunAction(Player* player, ImmersiveAction* action)
 
 uint32 ApplyRandomPercent(uint32 value)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED) || !sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_RANDOM_PCT)) return value;
-    float percent = (float) urand(0, sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_RANDOM_PCT)) - (float)sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_RANDOM_PCT) / 2;
+    if (!sImmersiveConfig.enabled || !sImmersiveConfig.sharedRandomPercent) return value;
+    float percent = (float) urand(0, sImmersiveConfig.sharedRandomPercent) - (float)sImmersiveConfig.sharedRandomPercent / 2;
     return value + (uint32) (value * percent / 100.0f);
 }
 
+#ifdef ENABLE_MANGOSBOTS
 class OnGiveXPAction : public ImmersiveAction
 {
 public:
@@ -721,7 +734,7 @@ public:
 
     bool Run(Player* player, Player* bot) override
     {
-        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_XP_PCT_LEVEL_DIFF))
+        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)sImmersiveConfig.sharedXpPercentLevelDiff)
         {
             return false;
         }
@@ -742,7 +755,7 @@ public:
         return true;
     }
 
-    string GetMessage(Player* player) override
+    std::string GetMessage(Player* player) override
     {
         return Immersive::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -752,14 +765,22 @@ public:
 private:
     int32 value;
 };
+#endif
 
 void Immersive::OnGiveXP(Player *player, uint32 xp, Unit* victim)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_XP_PCT) < 0.01f || !player->GetPlayerbotMgr()) return;
+#ifdef ENABLE_MANGOSBOTS
+    if (!sImmersiveConfig.enabled) 
+        return;
+
+    if (!player->GetPlayerbotMgr())
+        return;
+
+    if (sImmersiveConfig.sharedXpPercent < 0.01f) 
+        return;
 
     uint32 bonus_xp = xp + (victim ? player->GetXPRestBonus(xp) : 0);
-    uint32 botXp = (uint32) (bonus_xp * sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_XP_PCT) / 100.0f);
+    uint32 botXp = (uint32) (bonus_xp * sImmersiveConfig.sharedXpPercent / 100.0f);
     if (botXp < 1) 
     {
         return;
@@ -767,24 +788,29 @@ void Immersive::OnGiveXP(Player *player, uint32 xp, Unit* victim)
 
     OnGiveXPAction action(botXp);
     RunAction(player, &action);
+#endif
 }
 
 void Immersive::OnGiveLevel(Player* player)
 {
-    if (sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED) && sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_MANUAL_ATTRIBUTES))
+    if (!sImmersiveConfig.enabled)
+        return;
+
+    if (!sImmersiveConfig.manualAttributes)
+        return;
+
+    const uint32 usedStats = GetUsedStats(player);
+    const uint32 totalStats = GetTotalStats(player);
+    const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
+    if (availablePoints > 0)
     {
-        const uint32 usedStats = GetUsedStats(player);
-        const uint32 totalStats = GetTotalStats(player);
-        const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
-        if (availablePoints > 0)
-        {
-            SendMessage(player, FormatString(
-                        sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
-                        availablePoints));
-        }
+        SendMessage(player, FormatString(
+                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
+                    availablePoints));
     }
 }
 
+#ifdef ENABLE_MANGOSBOTS
 class OnGiveMoneyAction : public ImmersiveAction
 {
 public:
@@ -792,7 +818,7 @@ public:
 
     bool Run(Player* player, Player* bot) override
     {
-        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_XP_PCT_LEVEL_DIFF))
+        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)sImmersiveConfig.sharedXpPercentLevelDiff)
             return false;
 
         if (!CheckSharedPercentReqs(player, bot))
@@ -802,36 +828,43 @@ public:
         return true;
     }
 
-    virtual string GetMessage(Player* player)
+    virtual std::string GetMessage(Player* player)
     {
             return Immersive::FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-#ifdef ENABLE_MANGOSBOTS
                 ai::ChatHelper::formatMoney(value).c_str()
-#else
-                value
-#endif
             );
     }
 
 private:
     int32 value;
 };
+#endif
 
 void Immersive::OnModifyMoney(Player *player, int32 delta)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
+#ifdef ENABLE_MANGOSBOTS
+    if (!sImmersiveConfig.enabled) 
+        return;
 
-    if (delta < 1) return;
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_MONEY_PCT) < 0.01f || !player->GetPlayerbotMgr()) return;
+    if (!player->GetPlayerbotMgr())
+        return;
 
-    int32 botMoney = (int32) (delta * sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_MONEY_PCT) / 100.0f);
+    if (delta < 1) 
+        return;
+
+    if (sImmersiveConfig.sharedMoneyPercent < 0.01f)
+        return;
+
+    int32 botMoney = (int32) (delta * sImmersiveConfig.sharedMoneyPercent / 100.0f);
     if (botMoney < 1) return;
 
     OnGiveMoneyAction action(botMoney);
     RunAction(player, &action);
+#endif
 }
 
+#ifdef ENABLE_MANGOSBOTS
 class OnReputationChangeAction : public ImmersiveAction
 {
 public:
@@ -861,19 +894,32 @@ private:
     FactionEntry const* factionEntry;
     int32 value;
 };
+#endif
 
 void Immersive::OnReputationChange(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
-    if (sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_REP_PCT) < 0.01f || !player->GetPlayerbotMgr() || !incremental) return;
+#ifdef ENABLE_MANGOSBOTS
+    if (!sImmersiveConfig.enabled)
+        return;
 
-    int32 value = (uint32) (standing * sWorld.getConfig(CONFIG_UINT32_IMMERSIVE_SHARED_REP_PCT) / 100.0f);
+    if (!player->GetPlayerbotMgr())
+        return;
+
+    if (!incremental)
+        return;
+
+    if (sImmersiveConfig.sharedRepPercent < 0.01f)
+        return;
+
+    int32 value = (uint32) (standing * sImmersiveConfig.sharedRepPercent / 100.0f);
     if (value < 1) return;
 
     OnReputationChangeAction action(factionEntry, value);
     RunAction(player, &action);
+#endif
 }
 
+#ifdef ENABLE_MANGOSBOTS
 class OnRewardQuestAction : public ImmersiveAction
 {
 public:
@@ -906,7 +952,7 @@ public:
         return true;
     }
 
-    string GetMessage(Player* player) override
+    std::string GetMessage(Player* player) override
     {
         return Immersive::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -916,28 +962,44 @@ public:
 private:
     Quest const* quest;
 };
+#endif
 
 void Immersive::OnRewardQuest(Player* player, Quest const* quest)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_SHARED_QUESTS) || !player->GetPlayerbotMgr()) return;
-    if (!quest || quest->IsRepeatable()) return;
+#ifdef ENABLE_MANGOSBOTS
+    if (!sImmersiveConfig.enabled)
+        return;
+
+    if (!player->GetPlayerbotMgr())
+        return;
+
+    if (!sImmersiveConfig.sharedQuests)
+        return;
+
+    if (!quest || quest->IsRepeatable()) 
+        return;
 
     OnRewardQuestAction action(quest);
     RunAction(player, &action);
+#endif
 }
 
 bool Immersive::OnFishing(Player* player, bool success)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return success;
-    if (!success || !sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_FISHING_BAUBLES) || !player->GetPlayerbotMgr()) return success;
+    if (!sImmersiveConfig.enabled || !success)
+        return success;
+
+    if (!sImmersiveConfig.fishingBaubles)
+        return success;
 
     Item* const item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-    if (!item) return false;
+    if (!item) 
+        return false;
 
     uint32 eId = item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT);
     uint32 eDuration = item->GetEnchantmentDuration(TEMP_ENCHANTMENT_SLOT);
-    if (!eDuration) return false;
+    if (!eDuration) 
+        return false;
 
     SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(eId);
     if (!pEnchant)
@@ -965,8 +1027,11 @@ bool Immersive::OnFishing(Player* player, bool success)
 
 int32 Immersive::CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return 0;
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_MANUAL_ATTRIBUTES)) return 0;
+    if (!sImmersiveConfig.enabled) 
+        return difference;
+
+    if (!sImmersiveConfig.manualAttributes)
+        return difference;
 
     int32 attackerDelta = CalculateEffectiveChanceDelta(attacker);
     int32 victimDelta = CalculateEffectiveChanceDelta(victim);
@@ -977,29 +1042,43 @@ int32 Immersive::CalculateEffectiveChance(int32 difference, const Unit* attacker
 
     switch (type)
     {
-    case IMMERSIVE_EFFECTIVE_ATTACK_DISTANCE:
-        // victim level - attacker level
-        return - victimDelta * multiplier
-                + attackerDelta * multiplier;
-        break;
-    case IMMERSIVE_EFFECTIVE_CHANCE_MISS:
-    case IMMERSIVE_EFFECTIVE_CHANCE_SPELL_MISS:
-        // victim defense - attacker offense
-        return - victimDelta * multiplier
-                + attackerDelta * multiplier;
-    case IMMERSIVE_EFFECTIVE_CHANCE_DODGE:
-    case IMMERSIVE_EFFECTIVE_CHANCE_PARRY:
-    case IMMERSIVE_EFFECTIVE_CHANCE_BLOCK:
-        // attacker defense - victim offense
-        return - attackerDelta * multiplier
-                + victimDelta * multiplier;
-    case IMMERSIVE_EFFECTIVE_CHANCE_CRIT:
-        // attacker offense - victim defense
-        return - attackerDelta * multiplier
-                + victimDelta * multiplier;
+        case IMMERSIVE_EFFECTIVE_ATTACK_DISTANCE:
+        {
+            // victim level - attacker level
+            difference += - victimDelta * multiplier 
+                          + attackerDelta * multiplier;
+            break;
+        }
+
+        case IMMERSIVE_EFFECTIVE_CHANCE_MISS:
+        case IMMERSIVE_EFFECTIVE_CHANCE_SPELL_MISS:
+        {
+            // victim defense - attacker offense
+            difference += - victimDelta * multiplier
+                          + attackerDelta * multiplier;
+            break;
+        }
+
+        case IMMERSIVE_EFFECTIVE_CHANCE_DODGE:
+        case IMMERSIVE_EFFECTIVE_CHANCE_PARRY:
+        case IMMERSIVE_EFFECTIVE_CHANCE_BLOCK:
+        {
+            // attacker defense - victim offense
+            difference += - attackerDelta * multiplier
+                          + victimDelta * multiplier;
+            break;
+        }
+
+        case IMMERSIVE_EFFECTIVE_CHANCE_CRIT:
+        {
+            // attacker offense - victim defense
+            difference += - attackerDelta * multiplier
+                          + victimDelta * multiplier;
+            break;
+        }
     }
 
-    return 0;
+    return difference;
 }
 
 uint32 Immersive::CalculateEffectiveChanceDelta(const Unit* unit)
@@ -1017,56 +1096,9 @@ uint32 Immersive::CalculateEffectiveChanceDelta(const Unit* unit)
     return 0;
 }
 
-void Immersive::CastPortal(Player *player, bool meetingStone)
-{
-    /*
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
-
-    Group *group = player->GetGroup();
-    if (!group)
-    {
-        SendMessage(player, "|cffffa0a0You are not in a group");
-        return;
-    }
-
-    uint32 spellId =
-#ifdef MANGOSBOT_ZERO
-            23598; // meeting stone summoning
-#endif
-#ifdef MANGOSBOT_ONE
-            23598; // meeting stone summoning
-#endif
-#ifdef MANGOSBOT_TWO
-            61994; // meeting stone summoning
-#endif
-    uint32 reagent = 17032; // rune of portals
-
-    if (!meetingStone)
-    {
-        if (!player->HasItemCount(reagent, 1))
-        {
-            SendMessage(player, "|cffffa0a0You do not have any runes of portals");
-            return;
-        }
-
-        player->DestroyItemCount(reagent, 1, true);
-    }
-
-    player->CastSpell(player, spellId, false);
-    */
-}
-
-void Immersive::OnGoUse(Player *player, GameObject* obj)
-{
-    if (obj && obj->GetGoType() == GAMEOBJECT_TYPE_MEETINGSTONE)
-    {
-        CastPortal(player, true);
-    }
-}
-
 void Immersive::OnGossipHello(Player* player, Creature* creature)
 {
-#if MAX_EXPANSION == 1
+#if defined (MANGOSBOT_ONE) || MAX_EXPANSION == 1
     GossipMenu& menu = player->GetPlayerMenu()->GetGossipMenu();
     if (creature)
     {
@@ -1087,12 +1119,14 @@ void Immersive::OnGossipHello(Player* player, Creature* creature)
 #endif
 }
 
-map<uint8,float> scale;
+std::map<uint8,float> scale;
 void Immersive::CheckScaleChange(Player* player)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
+    if (!sImmersiveConfig.enabled) 
+        return;
 
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_SCALE_MOD_WORKAROUND)) return;
+    if (!sImmersiveConfig.scaleModifierWorkaround) 
+        return;
 
     uint8 race = player->getRace();
     if (scale.empty())
@@ -1122,7 +1156,7 @@ void Immersive::Update(uint32 elapsed)
     
     updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
     
-    if (sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_DISABLE_OFFLINE_RESPAWN)) 
+    if (sImmersiveConfig.disableOfflineRespawn)
     {
         SetValue(0, "last_ping", sWorld.GetGameTime());
     }
@@ -1132,9 +1166,10 @@ void Immersive::Init()
 {
     updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
     
-    if (!sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_ENABLED)) return;
+    if (!sImmersiveConfig.enabled) 
+        return;
     
-    if (sWorld.getConfig(CONFIG_BOOL_IMMERSIVE_DISABLE_OFFLINE_RESPAWN)) 
+    if (sImmersiveConfig.disableOfflineRespawn)
     {
         DisableOfflineRespawn();
     }
@@ -1157,6 +1192,11 @@ void Immersive::DisableOfflineRespawn()
     SetValue(0, "last_ping", sWorld.GetGameTime());
     
     CharacterDatabase.CommitTransaction();
+}
+
+float Immersive::GetFallThreshold()
+{
+    return sImmersiveConfig.enabled ? 4.57f : 14.57f;
 }
 
 INSTANTIATE_SINGLETON_1( immersive::Immersive );

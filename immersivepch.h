@@ -13,4 +13,5 @@
 #include "ObjectMgr.h"
 #include "ScriptMgr.h"
 
-#include "immersive.h"
+#include "src/ImmersiveConfig.h"
+#include "src/Immersive.h"

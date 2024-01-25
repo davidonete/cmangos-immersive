@@ -1,8 +1,6 @@
 #pragma once
 #include "GossipDef.h"
 
-using namespace std;
-
 namespace immersive
 {
     enum ImmersiveEffectiveChance
@@ -23,7 +21,7 @@ namespace immersive
 
     public:
         virtual bool Run(Player* player, Player* bot) = 0;
-        virtual string GetMessage(Player* player) = 0;
+        virtual std::string GetMessage(Player* player) = 0;
 
     protected:
         virtual bool CheckSharedPercentReqs(Player* player, Player* bot);
@@ -36,6 +34,7 @@ namespace immersive
         Immersive();
 
     public:
+        float GetFallThreshold();
         PlayerInfo const* GetPlayerInfo(uint32 race, uint32 class_);
         void GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info);
         void OnGossipSelect(Player *player, WorldObject* source, uint32 gossipListId, GossipMenuItemData *menuData);
@@ -52,7 +51,6 @@ namespace immersive
         uint32 GetStatsValue(uint32 owner, Stats type);
         void SetStatsValue(uint32 owner, Stats type, uint32 value);
         uint32 GetTotalStats(Player *player, uint8 level = 0);
-        void OnGoUse(Player *player, GameObject* obj);
         void OnGossipHello(Player* player, Creature* creature);
         void CheckScaleChange(Player* player);
         static std::string FormatString(const char* format, ...);
@@ -67,7 +65,7 @@ namespace immersive
         void ChangeModifier(Player *player, uint32 type);
         void ResetStats(Player *player);
         void CastPortal(Player *player, bool meetingStone = false);
-        void SendMessage(Player *player, string message);
+        void SendMessage(Player *player, const std::string& message);
         uint32 CalculateEffectiveChanceDelta(const Unit* unit);
         void DisableOfflineRespawn();
 
@@ -79,12 +77,12 @@ namespace immersive
         void RunAction(Player* player, ImmersiveAction* action);
 
     private:
-        uint32 GetValue(uint32 owner, string type);
-        void SetValue(uint32 owner, string type, uint32 value);
+        uint32 GetValue(uint32 owner, const std::string& type);
+        void SetValue(uint32 owner, const std::string& type, uint32 value);
 
     private:
-        static map<Stats, string> statValues;
-        map<uint32, map<string, uint32> > valueCache;
+        static std::map<Stats, std::string> statValues;
+        std::map< uint32, std::map<std::string, uint32> > valueCache;
         uint32 updateDelay;
     };
 }
