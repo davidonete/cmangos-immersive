@@ -1148,6 +1148,9 @@ void Immersive::CheckScaleChange(Player* player)
 
 void Immersive::Update(uint32 elapsed)
 {
+    if (!sImmersiveConfig.enabled)
+        return;
+
     if (updateDelay > elapsed)
     {
         updateDelay -= elapsed;
@@ -1164,10 +1167,10 @@ void Immersive::Update(uint32 elapsed)
 
 void Immersive::Init()
 {
-    updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
-    
-    if (!sImmersiveConfig.enabled) 
+    if (!sImmersiveConfig.enabled)
         return;
+
+    updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
     
     if (sImmersiveConfig.disableOfflineRespawn)
     {
