@@ -104,14 +104,16 @@ include_directories(
 
 # Define ENABLE_PLAYERBOTS if need
 if (BUILD_MANGOSBOTS)
+    include_directories(
+        ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot
+        ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
+	)
+
   add_definitions(-DENABLE_MANGOSBOTS)
 endif()
 
 # Define ENABLE_IMMERSIVE if need
 if (BUILD_IMMERSIVE)
-  add_definitions(-DENABLE_IMMERSIVE)
-endif()
-if (IMMERSIVE)
   add_definitions(-DENABLE_IMMERSIVE)
 endif()
 

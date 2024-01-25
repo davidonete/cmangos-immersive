@@ -638,8 +638,9 @@ bool ImmersiveAction::CheckSharedPercentReqs(Player* player, Player* bot)
     return false;
 }
 
-bool IsAlliance(uint8 race)
+bool PlayerIsAlliance(Player* player)
 {
+    const uint8 race = player->getRace();
     return race == RACE_HUMAN || 
            race == RACE_DWARF || 
            race == RACE_NIGHTELF ||
@@ -664,7 +665,7 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
     if (sImmersiveConfig.sharedPercentGuildRestiction && player->GetGuildId() != bot->GetGuildId())
         return false;
 
-    if (sImmersiveConfig.sharedPercentFactionRestiction && (IsAlliance(player->getRace()) ^ IsAlliance(bot->getRace())))
+    if (sImmersiveConfig.sharedPercentFactionRestiction && (PlayerIsAlliance(player) ^ PlayerIsAlliance(bot)))
         return false;
 
     if (sImmersiveConfig.sharedPercentRaceRestiction == 2)
