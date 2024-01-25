@@ -16,121 +16,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+set(LIBRARY_NAME Immersive)
+
 #Add PCH Files
-set(immersive_PCH "${CMAKE_SOURCE_DIR}/src/modules/Immersive/immersivepch.h")
+set(immersive_PCH "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.h")
 if(PCH)
-	LIST(APPEND immersive_PCH "${CMAKE_SOURCE_DIR}/src/modules/Immersive/immersivepch.cpp")
+    LIST(APPEND immersive_PCH "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.cpp")
 endif()
 
-if(BUILD_MANGOSBOTS)
-	#set(bots_PCH "${CMAKE_SOURCE_DIR}/src/modules/Bots/botpch.h")
-	#if(PCH)
-	#	LIST(APPEND bots_PCH "${CMAKE_SOURCE_DIR}/src/modules/Bots/botpch.cpp")
-	#endif()
+#Base files
+file(GLOB Immersive_Source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
+    source_group("Immersive" FILES ${Immersive_Source})
 
-	#Base files
-	file(GLOB Playerbot_Source ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/*.h)
-		source_group("Player Bot" FILES ${Playerbot_Source})
-
-	file(GLOB AHbot_Source ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot/*.h)
-		source_group("AH Bot" FILES ${AHbot_Source})
-
-	#Define base source library
-	set(LIBRARY_SRCS
-		${Playerbot_Source}
-		${AHbot_Source}
-		#${bots_PCH}
-	)
-
-	#Strategy files
-	file(GLOB Playerbot_Strategy ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/*.h)
-		source_group("Player Bot\\Strategies" FILES ${Playerbot_Strategy})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Strategy})
-
-	#Action files
-	file(GLOB Playerbot_Actions ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/actions/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/actions/*.h)
-		source_group("Player Bot\\Strategies\\Actions" FILES ${Playerbot_Actions})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Actions})
-
-	#Generic files
-	file(GLOB Playerbot_Generic ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/generic/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/generic/*.h)
-		source_group("Player Bot\\Strategies\\Generic" FILES ${Playerbot_Generic})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Generic})
-
-	#Trigger files
-	file(GLOB Playerbot_Triggers ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/triggers/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/triggers/*.h)
-		source_group("Player Bot\\Strategies\\Triggers" FILES ${Playerbot_Triggers})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Triggers})
-
-	#Value files
-	file(GLOB Playerbot_Values ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/values/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/values/*.h)
-		source_group("Player Bot\\Strategies\\Values" FILES ${Playerbot_Values})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Values})
-
-	## Class files
-
-	#Druid AI
-	file(GLOB Playerbot_Druid ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/druid/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/druid/*.h)
-		source_group("Player Bot\\Strategies\\Druid" FILES ${Playerbot_Druid})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Druid})
-
-	#Hunter AI
-	file(GLOB Playerbot_Hunter ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/hunter/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/hunter/*.h)
-		source_group("Player Bot\\Strategies\\Hunter" FILES ${Playerbot_Hunter})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Hunter})
-
-	#Mage AI
-	file(GLOB Playerbot_Mage ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/mage/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/mage/*.h)
-		source_group("Player Bot\\Strategies\\Mage" FILES ${Playerbot_Mage})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Mage})
-
-	#Paladin AI
-	file(GLOB Playerbot_Paladin ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/paladin/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/paladin/*.h)
-		source_group("Player Bot\\Strategies\\Paladin" FILES ${Playerbot_Paladin})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Paladin})
-
-	#Priest AI
-	file(GLOB Playerbot_Priest ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/priest/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/priest/*.h)
-		source_group("Player Bot\\Strategies\\Priest" FILES ${Playerbot_Priest})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Priest})
-
-	#Rogue AI
-	file(GLOB Playerbot_Rogue ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/rogue/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/rogue/*.h)
-		source_group("Player Bot\\Strategies\\Rogue" FILES ${Playerbot_Rogue})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Rogue})
-
-	#Shaman AI
-	file(GLOB Playerbot_Shaman ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/shaman/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/shaman/*.h)
-		source_group("Player Bot\\Strategies\\Shaman" FILES ${Playerbot_Shaman})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Shaman})
-
-	#Warlock AI
-	file(GLOB Playerbot_Warlock ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/warlock/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/warlock/*.h)
-		source_group("Player Bot\\Strategies\\Warlock" FILES ${Playerbot_Warlock})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Warlock})
-
-	#Warrior AI
-	file(GLOB Playerbot_Warrior ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/warrior/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/warrior/*.h)
-		source_group("Player Bot\\Strategies\\Warrior" FILES ${Playerbot_Warrior})
-		LIST(APPEND LIBRARY_SRCS ${Playerbot_Warrior})
-
-	add_definitions(-DENABLE_MANGOSBOTS)
-	
-    ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
-    ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot
-endif()
-
-# Define ENABLE_IMMERSIVE if need
-if (BUILD_IMMERSIVE)
-  add_definitions(-DENABLE_IMMERSIVE)
-endif()
+#Define base source library
+set(LIBRARY_SRCS
+    ${Immersive_Source}
+    ${immersive_PCH}
+)
 
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src/game
     ${CMAKE_SOURCE_DIR}/src/game/AI
-    ${CMAKE_SOURCE_DIR}/src/game/AI/BaseAI
-    ${CMAKE_SOURCE_DIR}/src/game/AI/EventAI
     ${CMAKE_SOURCE_DIR}/src/game/Accounts
     ${CMAKE_SOURCE_DIR}/src/game/Addons
     ${CMAKE_SOURCE_DIR}/src/game/Arena
@@ -190,11 +97,23 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/dep/include/g3dlite
     ${CMAKE_BINARY_DIR}
     ${CMAKE_BINARY_DIR}/src/shared
-    ${CMAKE_SOURCE_DIR}/src/modules/Immersive/src
     ${MYSQL_INCLUDE_DIR}
     ${ACE_INCLUDE_DIR}
     ${Boost_INCLUDE_DIRS}
 )
+
+# Define ENABLE_PLAYERBOTS if need
+if (BUILD_MANGOSBOTS)
+  add_definitions(-DENABLE_MANGOSBOTS)
+endif()
+
+# Define ENABLE_IMMERSIVE if need
+if (BUILD_IMMERSIVE)
+  add_definitions(-DENABLE_IMMERSIVE)
+endif()
+if (IMMERSIVE)
+  add_definitions(-DENABLE_IMMERSIVE)
+endif()
 
 if(PCH)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -215,7 +134,7 @@ if(UNIX)
 endif()
 
 # Install config files
-configure_file(${CMAKE_SOURCE_DIR}/src/modules/Immersive/src/immersive.conf.dist.in ${CMAKE_CURRENT_BINARY_DIR}/immersive.conf.dist)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/immersive.conf.dist.in ${CMAKE_CURRENT_BINARY_DIR}/immersive.conf.dist)
 if (NOT CONF_INSTALL_DIR)
   set(CONF_INSTALL_DIR ${CONF_DIR})
 endif()
@@ -223,24 +142,16 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/immersive.conf.dist DESTINATION ${CONF
 
 # Generate PCH
 if(PCH)
-  if (ADD_CXX_PCH)
-	ADD_CXX_PCH(Immersive ${immersive_PCH})
-    #ADD_CXX_PCH(Bots ${bots_PCH})
-  elseif (MSVC)
-	set(PCHBaseName "pchdef")
-    set(PrecompiledBinary "${CMAKE_SOURCE_DIR}/src/modules/Immersive/immersivepch.pch")
-    set(PrecompiledHeader "${CMAKE_SOURCE_DIR}/src/modules/Immersive/immersivepch.h")
-    set(PrecompiledSource "${CMAKE_SOURCE_DIR}/src/modules/Immersive/immersivepch.cpp")
+ if (ADD_CXX_PCH)
+    ADD_CXX_PCH(Immersive ${immersive_PCH})
+ elseif (MSVC)
+    set(PCHBaseName "pchdef")
+    set(PrecompiledBinary "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.pch")
+    set(PrecompiledHeader "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.h")
+    set(PrecompiledSource "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.cpp")
     set_target_properties(${LIBRARY_NAME} PROPERTIES COMPILE_FLAGS " /Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\" /bigobj")
     set_source_files_properties(${PrecompiledSource} PROPERTIES COMPILE_FLAGS "/Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\"")
     set_target_properties(${LIBRARY_NAME} PROPERTIES PROJECT_LABEL "Immersive")
-    #set(PCHBaseName "pchdef")
-    #set(PrecompiledBinary "${CMAKE_SOURCE_DIR}/src/modules/Bots/botpch.pch")
-    #set(PrecompiledHeader "${CMAKE_SOURCE_DIR}/src/modules/Bots/botpch.h")
-    #set(PrecompiledSource "${CMAKE_SOURCE_DIR}/src/modules/Bots/botpch.cpp")
-    #set_target_properties(${LIBRARY_NAME} PROPERTIES COMPILE_FLAGS " /Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\" /bigobj")
-    #set_source_files_properties(${PrecompiledSource} PROPERTIES COMPILE_FLAGS "/Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\"")
-    #set_target_properties(${LIBRARY_NAME} PROPERTIES PROJECT_LABEL "Bots")
   elseif(NOT MINGW)
     # TODO: Resolve issues with order of includes before enabling Cotire for MinGW builds
     cotire(${LIBRARY_NAME})
