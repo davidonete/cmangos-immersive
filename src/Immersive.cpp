@@ -1,5 +1,6 @@
 #include "immersivepch.h"
 
+#include "SpellEffectDefines.h"
 #include "GossipDef.h"
 #include "Language.h"
 #include "World.h"
@@ -1101,18 +1102,18 @@ uint32 Immersive::CalculateEffectiveChanceDelta(const Unit* unit)
 void Immersive::OnGossipHello(Player* player, Creature* creature)
 {
 #if defined (MANGOSBOT_ONE) || MAX_EXPANSION == 1
-    GossipMenu& menu = player->GetPlayerMenu()->GetGossipMenu();
-    if (creature)
+    if (player && creature)
     {
+        GossipMenu& menu = player->GetPlayerMenu()->GetGossipMenu();
         uint32 textId = player->GetGossipTextId(menu.GetMenuId(), creature);
         GossipText const* text = sObjectMgr.GetGossipText(textId);
         if (text)
         {
             for (int i = 0; i < MAX_GOSSIP_TEXT_OPTIONS; i++)
             {
-                string text0 = text->Options[i].Text_0;
+                std::string text0 = text->Options[i].Text_0;
                 if (!text0.empty()) creature->MonsterSay(text0.c_str(), 0, player);
-                string text1 = text->Options[i].Text_1;
+                std::string text1 = text->Options[i].Text_1;
                 if (!text1.empty() && text0 != text1) creature->MonsterSay(text1.c_str(), 0, player);
             }
         }
