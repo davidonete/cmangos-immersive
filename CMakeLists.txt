@@ -109,9 +109,7 @@ if (BUILD_MANGOSBOTS OR BUILD_IKE3_BOTS)
 		${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
 	)
 
-	if (BUILD_MANGOSBOTS)
-		add_definitions(-DENABLE_MANGOSBOTS)
-	endif()
+	add_definitions(-DENABLE_MANGOSBOTS)
 	
 	if (BUILD_IKE3_BOTS)
 		add_definitions(-DENABLE_PLAYERBOTS)
