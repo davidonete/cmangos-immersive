@@ -1,13 +1,17 @@
 -- backup
-drop table if exists creature_template_backup;
-create table creature_template_backup
+drop table if exists creature_template_immersive_backup;
+create table creature_template_immersive_backup
 SELECT * FROM creature_template where TrainerTemplateId <> 0 and TrainerClass <> 0 and GossipMenuId = 0;
 
+drop table if exists gossip_menu_option_immersive_backup;
+create table gossip_menu_option_immersive_backup
+SELECT * FROM gossip_menu_option where action_menu_id = 4461;
+
 -- cleanup
-DELETE FROM `gossip_menu` where entry > 60000;
-DELETE FROM `gossip_menu_option` where menu_id in (60000, 60001, 60002, 60003, 60004);
+DELETE FROM `gossip_menu` where entry in (60001, 60002, 60002, 60003);
+DELETE FROM `gossip_menu_option` where menu_id in (60001, 60002, 60003);
 DELETE FROM `gossip_menu_option` where option_text = 'Manage attributes';
-DELETE FROM `locales_gossip_menu_option` where menu_id in (60000, 60001, 60002, 60003, 60004);
+DELETE FROM `locales_gossip_menu_option` where menu_id in (60001, 60002, 60003);
 DELETE FROM `locales_gossip_menu_option` where option_text_loc6 = 'Administrat atributos';
 
 SET @TEXT_ID := 50800;
@@ -154,7 +158,7 @@ INSERT INTO `locales_gossip_menu_option` (`menu_id`, `id`, `option_text_loc6`, `
 SELECT menu_id, id, 'Administrat atributos', '' FROM `gossip_menu_option` WHERE option_text = 'Manage attributes';
 
 -- add missing gossips to trainers
-update creature_template set GossipMenuId = 4537 where entry in (select entry from creature_template_backup);
+update creature_template set GossipMenuId = 4537 where entry in (select entry from creature_template_immersive_backup);
 update gossip_menu_option set condition_id = 0 where action_menu_id = 4461;
 
 -- chat messages
