@@ -19,12 +19,19 @@ NOTE: This guide assumes that you have basic knowledge on how to generate c++ pr
 - WoTLK (Immersive only): To be done...
 - WoTLK (All mods): To be done...
 
-2. Clone the core desired and generate the solution using cmake. This mod requires you to enable the BUILD_IMMERSIVE flag for it to compile.
+2. Clone the core desired and generate the solution using cmake. This mod requires you to enable the "BUILD_IMMERSIVE" flag for it to compile.
 
 3. Build the project.
 
-4. Copy the configuration file from src/immersive.conf.dist.in and place it where your mangosd executable is. Also rename it to immersive.conf.
+4. Copy the configuration file from "src/immersive.conf.dist.in" and place it where your mangosd executable is. Also rename it to "immersive.conf".
 
 5. Remember to edit the config file and modify the options you want to use.
 
-6. Lastly you will have to install the database changes located in the sql folder, each folder inside represents where you should execute the queries. E.g. The queries inside of "world" will need to be executed in the world/mangosd database, the ones in characters in the characters database, etc...
+6. Lastly you will have to install the database changes located in the "sql/install" folder, each folder inside represents where you should execute the queries. E.g. The queries inside of "sql/install/world" will need to be executed in the world/mangosd database, the ones in "sql/install/characters" in the characters database, etc...
+
+# How to uninstall
+To remove immersive from your server you have multiple options, the first and easiest is to disable it from the immersive.conf file. The second option is to completely remove it from the server and db:
+
+1. Remove the "BUILD_IMMERSIVE" flag from your cmake configuration and recompile the game
+
+2. Execute the sql queries located in the "sql/uninstall" folder. Each folder inside represents where you should execute the queries. E.g. The queries inside of "sql/uninstall/world" will need to be executed in the world/mangosd database, the ones in "sql/uninstall/characters" in the characters database, etc...
