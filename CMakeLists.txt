@@ -110,6 +110,7 @@ if (BUILD_MANGOSBOTS OR BUILD_IKE3_BOTS)
 	)
 
 	add_definitions(-DENABLE_MANGOSBOTS)
+	add_definitions(-DENABLE_PLAYERBOTS)
 endif()
 
 # Define ENABLE_IMMERSIVE if need
