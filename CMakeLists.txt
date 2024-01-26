@@ -109,8 +109,13 @@ if (BUILD_MANGOSBOTS OR BUILD_IKE3_BOTS)
 		${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
 	)
 
-	add_definitions(-DENABLE_MANGOSBOTS)
-	add_definitions(-DENABLE_PLAYERBOTS)
+	if (BUILD_MANGOSBOTS)
+		add_definitions(-DENABLE_MANGOSBOTS)
+	endif()
+	
+	if (BUILD_IKE3_BOTS)
+		add_definitions(-DENABLE_PLAYERBOTS)
+	endif()
 endif()
 
 # Define ENABLE_IMMERSIVE if need
