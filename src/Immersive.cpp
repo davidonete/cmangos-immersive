@@ -1153,18 +1153,18 @@ void Immersive::Update(uint32 elapsed)
 {
     if (!sImmersiveConfig.enabled)
         return;
-
-    if (updateDelay > elapsed)
-    {
-        updateDelay -= elapsed;
-        return;
-    }
     
-    updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
-    
-    if (sImmersiveConfig.disableOfflineRespawn)
+    if (sImmersiveConfig.disableOfflineRespawn || sImmersiveConfig.disableInstanceRespawn)
     {
-        SetValue(0, "last_ping", sWorld.GetGameTime());
+        if (updateDelay > elapsed)
+        {
+            updateDelay -= elapsed;
+        }
+        else
+        {
+            updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
+            SetValue(0, "last_ping", sWorld.GetGameTime());
+        }
     }
 }
 
@@ -1172,11 +1172,10 @@ void Immersive::Init()
 {
     if (!sImmersiveConfig.enabled)
         return;
-
-    updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
     
-    if (sImmersiveConfig.disableOfflineRespawn)
+    if (sImmersiveConfig.disableOfflineRespawn || sImmersiveConfig.disableInstanceRespawn)
     {
+        updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
         DisableOfflineRespawn();
     }
 }
@@ -1198,6 +1197,28 @@ void Immersive::DisableOfflineRespawn()
     SetValue(0, "last_ping", sWorld.GetGameTime());
     
     CharacterDatabase.CommitTransaction();
+}
+
+bool Immersive::CanCreatureRespawn(Creature* creature) const
+{
+    if (sImmersiveConfig.enabled)
+    {
+        // Disable instance creatures respawn 
+        if (sImmersiveConfig.disableInstanceRespawn)
+        {
+            // Don't prevent manual respawns to happen
+            if (!creature->IsManualRespawnScheduled())
+            {
+                Map* map = creature->GetMap();
+                if (map && !map->IsBattleGround() && (map->IsDungeon() || map->IsRaid()))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 float Immersive::GetFallThreshold()

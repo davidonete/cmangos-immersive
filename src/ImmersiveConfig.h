@@ -38,6 +38,7 @@ public:
     bool scaleModifierWorkaround;
     uint32 sharedRandomPercent;
     bool disableOfflineRespawn;
+    bool disableInstanceRespawn;
 
 private:
     Config config;

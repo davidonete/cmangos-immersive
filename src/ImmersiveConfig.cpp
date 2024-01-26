@@ -63,6 +63,7 @@ bool ImmersiveConfig::Initialize()
     scaleModifierWorkaround = config.GetBoolDefault("Immersive.ScaleModifierWorkaround", false);
     sharedRandomPercent = config.GetIntDefault("Immersive.SharedRandomPercent", 0);
     disableOfflineRespawn = config.GetBoolDefault("Immersive.DisableOfflineRespawn", false);
+    disableInstanceRespawn = config.GetBoolDefault("Immersive.DisableInstanceRespawn", false);
 
     sLog.outString("Immersive configuration loaded");
     return true;
