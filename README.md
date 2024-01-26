@@ -13,11 +13,11 @@ NOTE: This guide assumes that you have basic knowledge on how to generate c++ pr
 
 1. You should use a compatible core version for this to work: 
 - Classic (Immersive only): https://github.com/davidonete/mangos-classic/tree/immersive-mod
-- Classic (All mods): https://github.com/davidonete/mangos-classic/tree/mods
+- Classic (All mods): https://github.com/celguar/mangos-classic/tree/ike3-bots
 - TBC (Immersive only): To be done...
-- TBC (All mods): To be done...
+- TBC (All mods): https://github.com/celguar/mangos-tbc/tree/ike3-bots
 - WoTLK (Immersive only): To be done...
-- WoTLK (All mods): To be done...
+- WoTLK (All mods): https://github.com/celguar/mangos-wotlk/tree/ike3-bots
 
 2. Clone the core desired and generate the solution using cmake. This mod requires you to enable the "BUILD_IMMERSIVE" flag for it to compile.
 
