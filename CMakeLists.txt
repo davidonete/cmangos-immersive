@@ -19,18 +19,18 @@
 set(LIBRARY_NAME Immersive)
 
 #Add PCH Files
-set(immersive_PCH "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.h")
+set(immersive_PCH "${CMAKE_CURRENT_SOURCE_DIR}/src/immersivepch.h")
 if(PCH)
-    LIST(APPEND immersive_PCH "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.cpp")
+    LIST(APPEND immersive_PCH "${CMAKE_CURRENT_SOURCE_DIR}/src/immersivepch.cpp")
 endif()
 
 #Base files
-file(GLOB Immersive_Source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
-    source_group("Immersive" FILES ${Immersive_Source})
+file(GLOB immersive_source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
+    source_group("Immersive" FILES ${immersive_source})
 
 #Define base source library
 set(LIBRARY_SRCS
-    ${Immersive_Source}
+    ${immersive_source}
     ${immersive_PCH}
 )
 
@@ -152,9 +152,9 @@ if(PCH)
 		ADD_CXX_PCH(Immersive ${immersive_PCH})
 	elseif (MSVC)
 		set(PCHBaseName "pchdef")
-		set(PrecompiledBinary "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.pch")
-		set(PrecompiledHeader "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.h")
-		set(PrecompiledSource "${CMAKE_CURRENT_SOURCE_DIR}/immersivepch.cpp")
+		set(PrecompiledBinary "${CMAKE_CURRENT_SOURCE_DIR}/src/immersivepch.pch")
+		set(PrecompiledHeader "${CMAKE_CURRENT_SOURCE_DIR}/src/immersivepch.h")
+		set(PrecompiledSource "${CMAKE_CURRENT_SOURCE_DIR}/src/immersivepch.cpp")
 		set_target_properties(${LIBRARY_NAME} PROPERTIES COMPILE_FLAGS " /Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\" /bigobj")
 		set_source_files_properties(${PrecompiledSource} PROPERTIES COMPILE_FLAGS "/Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\"")
 		set_target_properties(${LIBRARY_NAME} PROPERTIES PROJECT_LABEL "Immersive")
