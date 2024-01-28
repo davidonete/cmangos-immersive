@@ -1170,6 +1170,8 @@ void Immersive::Update(uint32 elapsed)
 
 void Immersive::Init()
 {
+    sImmersiveConfig.Initialize();
+
     if (!sImmersiveConfig.enabled)
         return;
     
