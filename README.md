@@ -33,6 +33,8 @@ NOTE: The "Immersive only" version is provided as an example of where to place t
 
 6. Lastly you will have to install the database changes located in the "sql/install" folder, each folder inside represents where you should execute the queries. E.g. The queries inside of "sql/install/world" will need to be executed in the world/mangosd database, the ones in "sql/install/characters" in the characters database, etc...
 
+7. For being able to see the UI on the client you will need to download and install the following addon https://github.com/celguar/Achiever
+
 # How to uninstall
 To remove immersive from your server you have multiple options, the first and easiest is to disable it from the immersive.conf file. The second option is to completely remove it from the server and db:
 
