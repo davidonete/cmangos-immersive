@@ -66,7 +66,6 @@ PlayerInfo extraPlayerInfo[MAX_RACES][MAX_CLASSES];
 
 PlayerInfo const* Immersive::GetPlayerInfo(uint32 race, uint32 class_)
 {
-
 #if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
     if (class_ == CLASS_SHAMAN && race == RACE_NIGHTELF)
     {
@@ -124,7 +123,7 @@ void Immersive::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
     }
 }
 
-void Immersive::OnGossipSelect(Player *player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData *menuData)
+void Immersive::OnPlayerGossipSelect(Player *player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData *menuData)
 {
     if (gossipOptionId == GOSSIP_OPTION_IMMERSIVE)
     {
@@ -221,7 +220,7 @@ float Immersive::GetFallDamage(Player* player, float zdist, float defaultVal)
     return 0.0055f * zdist * zdist * sImmersiveConfig.fallDamageMultiplier;
 }
 
-void Immersive::OnDeath(Player *player)
+void Immersive::OnPlayerResurrect(Player *player)
 {
     if (!sImmersiveConfig.enabled || !player)
         return;
@@ -774,7 +773,7 @@ private:
 };
 #endif
 
-void Immersive::OnGiveXP(Player *player, uint32 xp, Unit* victim)
+void Immersive::OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled) 
@@ -798,7 +797,7 @@ void Immersive::OnGiveXP(Player *player, uint32 xp, Unit* victim)
 #endif
 }
 
-void Immersive::OnGiveLevel(Player* player)
+void Immersive::OnPlayerGiveLevel(Player* player)
 {
     if (!sImmersiveConfig.enabled)
         return;
@@ -849,7 +848,7 @@ private:
 };
 #endif
 
-void Immersive::OnModifyMoney(Player *player, int32 delta)
+void Immersive::OnPlayerModifyMoney(Player *player, int32 delta)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled) 
@@ -904,7 +903,7 @@ private:
 };
 #endif
 
-void Immersive::OnReputationChange(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental)
+void Immersive::OnPlayerSetReputation(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled)
@@ -972,7 +971,7 @@ private:
 };
 #endif
 
-void Immersive::OnRewardQuest(Player* player, Quest const* quest)
+void Immersive::OnPlayerRewardQuest(Player* player, Quest const* quest)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled)
@@ -992,7 +991,7 @@ void Immersive::OnRewardQuest(Player* player, Quest const* quest)
 #endif
 }
 
-bool Immersive::OnFishing(Player* player, bool success)
+bool Immersive::OnPlayerUseFishingNode(Player* player, bool success)
 {
     if (!sImmersiveConfig.enabled || !success)
         return success;
@@ -1104,7 +1103,7 @@ uint32 Immersive::CalculateEffectiveChanceDelta(const Unit* unit)
     return 0;
 }
 
-void Immersive::OnGossipHello(Player* player, Creature* creature)
+void Immersive::OnPlayerGossipHello(Player* player, Creature* creature)
 {
 #if defined (MANGOSBOT_ONE) || MAX_EXPANSION == 1
     if (player && creature)
@@ -1187,7 +1186,7 @@ void Immersive::Init()
     }
 }
 
-bool Immersive::OnPrepareGossipMenu(uint32 optionId)
+bool Immersive::OnPlayerPrepareUnitGossipMenu(uint32 optionId)
 {
     return optionId == GOSSIP_OPTION_IMMERSIVE;
 }

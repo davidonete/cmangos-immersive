@@ -105,34 +105,30 @@ public:
     void Init();
     void Update(uint32 elapsed);
 
+    static std::string FormatString(const char* format, ...);
+
     // Fall damage
     float GetFallThreshold(const float default);
     float GetFallDamage(Player* player, float zdist, float defaultVal);
 
-    // Player info
-    PlayerInfo const* GetPlayerInfo(uint32 race, uint32 class_);
-    void GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info);
-    int32 CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type);
-
     // Respawn
     bool CanCreatureRespawn(Creature* creature) const;
-
-private:
     void DisableOfflineRespawn();
 
-public:
-    void OnDeath(Player *player);
-    void OnGiveXP(Player *player, uint32 xp, Unit* victim);
-    void OnGiveLevel(Player* player);
-    void OnModifyMoney(Player *player, int32 delta);
-    void OnReputationChange(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental);
-    void OnRewardQuest(Player* player, Quest const* quest);
-    bool OnFishing(Player* player, bool success);
+    // Player methods
+    void OnPlayerResurrect(Player *player);
+    void OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim);
+    void OnPlayerGiveLevel(Player* player);
+    void OnPlayerModifyMoney(Player *player, int32 delta);
+    void OnPlayerSetReputation(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental);
+    void OnPlayerRewardQuest(Player* player, Quest const* quest);
+    bool OnPlayerUseFishingNode(Player* player, bool success);
 
     // Manual stats
-    bool OnPrepareGossipMenu(uint32 optionId);
-    void OnGossipSelect(Player* player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData* menuData);
-    void OnGossipHello(Player* player, Creature* creature);
+    bool OnPlayerPrepareUnitGossipMenu(uint32 optionId);
+    void OnPlayerGossipSelect(Player* player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData* menuData);
+    void OnPlayerGossipHello(Player* player, Creature* creature);
+
     PlayerInfo const* GetPlayerInfo(uint32 race, uint32 class_);
     void GetPlayerLevelInfo(Player* player, PlayerLevelInfo* info);
     int32 CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type);
@@ -148,17 +144,14 @@ private:
     uint32 GetUsedStats(Player* player);
     uint32 GetStatCost(Player* player, uint8 level = 0, uint32 usedStats = 0);
     void IncreaseStat(Player* player, uint32 type);
+    void ResetStats(Player* player);
     void ChangeModifier(Player* player, uint32 type);
     void CheckScaleChange(Player* player);
 
-    static std::string FormatString(const char* format, ...);
-
-private:
     void PrintHelp(Player *player, bool detailed = false, bool help = false);
     void PrintUsedStats(Player* player);
     void PrintSuggestedStats(Player* player);
-
-    void ResetStats(Player *player);
+    
     void SendSysMessage(Player *player, const std::string& message);
     void RunAction(Player* player, ImmersiveAction* action);
 
