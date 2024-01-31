@@ -1,4 +1,4 @@
-#include "Immersive.h"
+#include "ImmersiveMgr.h"
 #include "ImmersiveConfig.h"
 
 #include "Entities/GossipDef.h"
@@ -124,71 +124,74 @@ void Immersive::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
     }
 }
 
-void Immersive::OnGossipSelect(Player *player, WorldObject* source, uint32 gossipListId, GossipMenuItemData *menuData)
+void Immersive::OnGossipSelect(Player *player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData *menuData)
 {
-    bool closeGossipWindow = false;
-    if (!sImmersiveConfig.enabled)
+    if (gossipOptionId == GOSSIP_OPTION_IMMERSIVE)
     {
-        SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
-        closeGossipWindow = true;
-    }
-    else
-    {
-        switch (menuData->m_gAction_poi)
+        bool closeGossipWindow = false;
+        if (!sImmersiveConfig.enabled)
         {
-            // Help
-            case 0: 
-            {
-                PrintHelp(player, true, true);
-                break;
-            }
-
-            // Increase stats
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            {
-                IncreaseStat(player, menuData->m_gAction_poi - 1);
-                break;
-            }
-
-            // Reset stats
-            case 6:
-            {
-                ResetStats(player);
-                break;
-            }
-
-            // Reduce stat modifier
-            case 11:
-            case 12:
-            case 13:
-            case 14:
-            case 15:
-            case 16:
-            case 17:
-            case 18:
-            case 19:
-            case 20:
-            {
-                ChangeModifier(player, menuData->m_gAction_poi - 11);
-                break;
-            }
-
-            default: break;
+            SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
+            closeGossipWindow = true;
         }
-    }
+        else
+        {
+            switch (menuData->m_gAction_poi)
+            {
+                // Help
+                case IMMERSIVE_GOSSIP_OPTION_HELP:
+                {
+                    PrintHelp(player, true, true);
+                    break;
+                }
 
-    if (closeGossipWindow)
-    {
-        player->GetPlayerMenu()->CloseGossip();
-    }
-    else
-    {
-        player->PrepareGossipMenu(source, 60001);
-        player->SendPreparedGossip(source);
+                // Increase stats
+                case IMMERSIVE_GOSSIP_OPTION_INCREASE_STRENGTH:
+                case IMMERSIVE_GOSSIP_OPTION_INCREASE_AGILITY:
+                case IMMERSIVE_GOSSIP_OPTION_INCREASE_STAMINA:
+                case IMMERSIVE_GOSSIP_OPTION_INCREASE_INTELLECT:
+                case IMMERSIVE_GOSSIP_OPTION_INCREASE_SPIRIT:
+                {
+                    IncreaseStat(player, menuData->m_gAction_poi - 1);
+                    break;
+                }
+
+                // Reset stats
+                case IMMERSIVE_GOSSIP_OPTION_RESET_STATS:
+                {
+                    ResetStats(player);
+                    break;
+                }
+
+                // Reduce stat modifier
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_0:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_10:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_20:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_30:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_40:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_50:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_60:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_70:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_80:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_90:
+                {
+                    ChangeModifier(player, menuData->m_gAction_poi - 11);
+                    break;
+                }
+
+                default: break;
+            }
+        }
+
+        if (closeGossipWindow)
+        {
+            player->GetPlayerMenu()->CloseGossip();
+        }
+        else
+        {
+            player->PrepareGossipMenu(source, 60001);
+            player->SendPreparedGossip(source);
+        }
     }
 }
 
@@ -385,7 +388,7 @@ void Immersive::ChangeModifier(Player *player, uint32 type)
 
     uint32 owner = player->GetObjectGuid().GetRawValue();
     uint32 value = type * 10;
-    SetValue(owner, "modifier", value);
+    SetStatsValue(owner, "modifier", value);
 
     std::ostringstream modifierStr; modifierStr << value << percent(player);
     if (!value || value == 100)
@@ -463,7 +466,7 @@ void Immersive::ResetStats(Player *player)
 
     for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
     {
-        SetValue(owner, statValues[(Stats)i], 0);
+        SetStatsValue(owner, statValues[(Stats)i], 0);
     }
 
     uint32 usedStats = GetUsedStats(player);
@@ -553,7 +556,7 @@ uint32 Immersive::GetStatCost(Player *player, uint8 level, uint32 usedStats)
     return sImmersiveConfig.manualAttributesCostMult * (usedLevels * usedLevels + 1);
 }
 
-uint32 Immersive::GetValue(uint32 owner, const std::string& type)
+uint32 Immersive::GetStatsValue(uint32 owner, const std::string& type)
 {
     uint32 value = valueCache[owner][type];
 
@@ -574,7 +577,7 @@ uint32 Immersive::GetValue(uint32 owner, const std::string& type)
     return value;
 }
 
-void Immersive::SetValue(uint32 owner, const std::string& type, uint32 value)
+void Immersive::SetStatsValue(uint32 owner, const std::string& type, uint32 value)
 {
     valueCache[owner][type] = value;
     CharacterDatabase.DirectPExecute("delete from immersive_values where owner = '%u' and `type` = '%s'",
@@ -590,17 +593,17 @@ void Immersive::SetValue(uint32 owner, const std::string& type, uint32 value)
 
 uint32 Immersive::GetStatsValue(uint32 owner, Stats type)
 {
-    return GetValue(owner, Immersive::statValues[type]);
+    return GetStatsValue(owner, Immersive::statValues[type]);
 }
 
 void Immersive::SetStatsValue(uint32 owner, Stats type, uint32 value)
 {
-    SetValue(owner, Immersive::statValues[type], value);
+    SetStatsValue(owner, Immersive::statValues[type], value);
 }
 
 uint32 Immersive::GetModifierValue(uint32 owner)
 {
-    int modifier = GetValue(owner, "modifier");
+    int modifier = GetStatsValue(owner, "modifier");
     if (!modifier) modifier = 100;
     return modifier;
 }
@@ -1165,7 +1168,7 @@ void Immersive::Update(uint32 elapsed)
         else
         {
             updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
-            SetValue(0, "last_ping", sWorld.GetGameTime());
+            SetStatsValue(0, "last_ping", sWorld.GetGameTime());
         }
     }
 }
@@ -1184,9 +1187,14 @@ void Immersive::Init()
     }
 }
 
+bool Immersive::OnPrepareGossipMenu(uint32 optionId)
+{
+    return optionId == GOSSIP_OPTION_IMMERSIVE;
+}
+
 void Immersive::DisableOfflineRespawn()
 {
-    uint32 lastPing = GetValue(0, "last_ping");
+    uint32 lastPing = GetStatsValue(0, "last_ping");
     if (!lastPing) return;
     
     uint32 offlineTime = sWorld.GetGameTime() - lastPing; 
@@ -1198,7 +1206,7 @@ void Immersive::DisableOfflineRespawn()
     CharacterDatabase.DirectPExecute("update `instance_reset` set `resettime` = `resettime` + '%u'", offlineTime);
     CharacterDatabase.DirectPExecute("update `instance` set `resettime` = `resettime` + '%u'", offlineTime);
     CharacterDatabase.DirectPExecute("update `gameobject_respawn` set `respawntime` = `respawntime` + '%u'", offlineTime);
-    SetValue(0, "last_ping", sWorld.GetGameTime());
+    SetStatsValue(0, "last_ping", sWorld.GetGameTime());
     
     CharacterDatabase.CommitTransaction();
 }
@@ -1225,9 +1233,9 @@ bool Immersive::CanCreatureRespawn(Creature* creature) const
     return true;
 }
 
-float Immersive::GetFallThreshold()
+float Immersive::GetFallThreshold(const float default)
 {
-    return sImmersiveConfig.enabled ? 4.57f : 14.57f;
+    return sImmersiveConfig.enabled ? 4.57f : default;
 }
 
 INSTANTIATE_SINGLETON_1( Immersive );
