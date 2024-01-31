@@ -8,6 +8,8 @@ The mod comes with the following features:
 - Fall damage: Increase the fall damage at will
 - Disable respawn: Mobs and gameobjects of an instance won't respawn until the instance is reset
 
+This mod was ported from https://github.com/ike3/mangosbot-immersive and modified to become a independent module as well as adding extra features.
+
 # How to install
 NOTE: This guide assumes that you have basic knowledge on how to generate c++ projects, compile code and modify a database
 
