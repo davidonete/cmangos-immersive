@@ -1,7 +1,10 @@
-#ifndef _ACHIEVEMENT_MGR_H
-#define _ACHIEVEMENT_MGR_H
+#ifndef _IMMERSIVE_H
+#define _IMMERSIVE_H
+
+#include "Platform/Define.h"
 
 #include <string>
+#include <map>
 
 class Creature;
 class Player;
@@ -81,7 +84,6 @@ private:
     uint32 CalculateEffectiveChanceDelta(const Unit* unit);
     void DisableOfflineRespawn();
 
-private:
     uint32 GetUsedStats(Player *player);
     uint32 GetStatCost(Player *player, uint8 level = 0, uint32 usedStats = 0);
     void RunAction(Player* player, ImmersiveAction* action);
