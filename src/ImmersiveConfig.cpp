@@ -1,6 +1,8 @@
-#include "immersivepch.h"
-#include "SystemConfig.h"
 #include "ImmersiveConfig.h"
+
+#include "Log.h"
+#include "Policies/Singleton.h"
+#include "SystemConfig.h"
 
 ImmersiveConfig::ImmersiveConfig()
 : enabled(false)

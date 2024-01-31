@@ -1,17 +1,18 @@
-#include "immersivepch.h"
+#include "Immersive.h"
+#include "ImmersiveConfig.h"
 
-#include "SpellEffectDefines.h"
-#include "GossipDef.h"
-#include "Language.h"
-#include "World.h"
+#include "Entities/GossipDef.h"
+#include "Entities/Player.h"
+#include "Globals/SharedDefines.h"
+#include "Globals/ObjectMgr.h"
+#include "Tools/Language.h"
+#include "World/World.h"
 
 #ifdef ENABLE_MANGOSBOTS
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotAI.h"
 #include "ChatHelper.h"
 #endif
-
-using namespace immersive;
 
 std::map<Stats, std::string> Immersive::statValues;
 
@@ -128,7 +129,7 @@ void Immersive::OnGossipSelect(Player *player, WorldObject* source, uint32 gossi
     bool closeGossipWindow = false;
     if (!sImmersiveConfig.enabled)
     {
-        SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
+        SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         closeGossipWindow = true;
     }
     else
@@ -275,7 +276,7 @@ void Immersive::OnDeath(Player *player)
             }
         }
 
-        SendMessage(player, FormatString(
+        SendSysMessage(player, FormatString(
                     sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_LOST, player->GetSession()->GetSessionDbLocaleIndex()),
                     out.str().c_str()));
 
@@ -299,7 +300,7 @@ void Immersive::PrintHelp(Player *player, bool detailed, bool help)
     uint32 totalStats = GetTotalStats(player);
     uint32 purchaseCost = GetStatCost(player) * sImmersiveConfig.manualAttributesIncrease;
 
-    SendMessage(player, FormatString(
+    SendSysMessage(player, FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AVAILABLE, player->GetSession()->GetSessionDbLocaleIndex()),
                 (totalStats > usedStats ? totalStats - usedStats : 0),
                 formatMoney(purchaseCost).c_str()));
@@ -344,7 +345,7 @@ void Immersive::PrintUsedStats(Player* player)
         out << " " << FormatString(sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MODIFIER, player->GetSession()->GetSessionDbLocaleIndex()), modifierStr.str().c_str());
     }
 
-    SendMessage(player, FormatString(
+    SendSysMessage(player, FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_ASSIGNED, player->GetSession()->GetSessionDbLocaleIndex()),
                 out.str().c_str()));
 }
@@ -371,7 +372,7 @@ void Immersive::PrintSuggestedStats(Player* player)
 
     if (used)
     {
-        SendMessage(player, FormatString(
+        SendSysMessage(player, FormatString(
                     sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SUGGESTED, player->GetSession()->GetSessionDbLocaleIndex()),
                     out.str().c_str()));
     }
@@ -392,7 +393,7 @@ void Immersive::ChangeModifier(Player *player, uint32 type)
         modifierStr << " " << sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MOD_DISABLED, player->GetSession()->GetSessionDbLocaleIndex());
     }
 
-    SendMessage(player, FormatString(
+    SendSysMessage(player, FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MOD_CHANGED, player->GetSession()->GetSessionDbLocaleIndex()),
                 modifierStr.str().c_str()));
 
@@ -404,7 +405,7 @@ void Immersive::IncreaseStat(Player *player, uint32 type)
 {
     if (!sImmersiveConfig.enabled)
     {
-        SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
+        SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
     }
 
@@ -418,13 +419,13 @@ void Immersive::IncreaseStat(Player *player, uint32 type)
 
     if (usedStats >= totalStats)
     {
-        SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MISSING, player->GetSession()->GetSessionDbLocaleIndex()));
+        SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MISSING, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
     }
 
     if (player->GetMoney() < purchaseCost)
     {
-        SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MISSING_GOLD, player->GetSession()->GetSessionDbLocaleIndex()));
+        SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MISSING_GOLD, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
     }
 
@@ -435,7 +436,7 @@ void Immersive::IncreaseStat(Player *player, uint32 type)
     totalStats = GetTotalStats(player);
     attributePointsAvailable = (totalStats > usedStats ? totalStats - usedStats : 0);
 
-    SendMessage(player, FormatString(
+    SendSysMessage(player, FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
                 statIncrease,
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + type, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -454,7 +455,7 @@ void Immersive::ResetStats(Player *player)
 {
     if (!sImmersiveConfig.enabled)
     {
-        SendMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
+        SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
     }
 
@@ -468,7 +469,7 @@ void Immersive::ResetStats(Player *player)
     uint32 usedStats = GetUsedStats(player);
     uint32 totalStats = GetTotalStats(player);
 
-    SendMessage(player, FormatString(
+    SendSysMessage(player, FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_RESET, player->GetSession()->GetSessionDbLocaleIndex()),
                 (totalStats > usedStats ? totalStats - usedStats : 0)));
 
@@ -604,7 +605,7 @@ uint32 Immersive::GetModifierValue(uint32 owner)
     return modifier;
 }
 
-void Immersive::SendMessage(Player *player, const std::string& message)
+void Immersive::SendSysMessage(Player *player, const std::string& message)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (player->GetPlayerbotAI())
@@ -718,8 +719,8 @@ void Immersive::RunAction(Player* player, ImmersiveAction* action)
 #endif
 
     if (!needMsg) return;
-    out << "|cffffff00: " << action->GetMessage(player);
-    SendMessage(player, out.str());
+    out << "|cffffff00: " << action->GetActionMessage(player);
+    SendSysMessage(player, out.str());
 }
 
 uint32 ApplyRandomPercent(uint32 value)
@@ -758,7 +759,7 @@ public:
         return true;
     }
 
-    std::string GetMessage(Player* player) override
+    std::string GetActionMessage(Player* player) override
     {
         return Immersive::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -807,7 +808,7 @@ void Immersive::OnGiveLevel(Player* player)
     const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
     if (availablePoints > 0)
     {
-        SendMessage(player, FormatString(
+        SendSysMessage(player, FormatString(
                     sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
                     availablePoints));
     }
@@ -831,12 +832,13 @@ public:
         return true;
     }
 
-    virtual std::string GetMessage(Player* player)
+    std::string GetActionMessage(Player* player) override
     {
-            return Immersive::FormatString(
-                sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-                ai::ChatHelper::formatMoney(value).c_str()
-            );
+        return Immersive::FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
+            ai::ChatHelper::formatMoney(value).c_str()
+        );
     }
 
 private:
@@ -886,7 +888,7 @@ public:
         }
     }
 
-    string GetMessage(Player* player) override
+    string GetActionMessage(Player* player) override
     {
         return Immersive::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_REPUTATION_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -955,7 +957,7 @@ public:
         return true;
     }
 
-    std::string GetMessage(Player* player) override
+    std::string GetActionMessage(Player* player) override
     {
         return Immersive::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -1228,4 +1230,4 @@ float Immersive::GetFallThreshold()
     return sImmersiveConfig.enabled ? 4.57f : 14.57f;
 }
 
-INSTANTIATE_SINGLETON_1( immersive::Immersive );
+INSTANTIATE_SINGLETON_1( Immersive );
