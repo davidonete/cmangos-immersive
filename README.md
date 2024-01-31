@@ -1,5 +1,5 @@
 # Immersive Mod
-Immersive mod for cmangos core which will increases roleplay aspect of the game. Currently only compatible with classic core.
+Immersive mod for cmangos core which will increases roleplay aspect of the game.
 The mod comes with the following features:
 - Manual attributes: Set up the attributes of your character (stamina, strenght, intellect, spirit and agility) manually on a class trainer instead of automatically when leveling up
 - Attribute loss on death: Set up attribute loss when your character dies (you will be able to pick them up again on the class trainer)
@@ -20,6 +20,8 @@ NOTE: This guide assumes that you have basic knowledge on how to generate c++ pr
 - TBC (All mods): https://github.com/celguar/mangos-tbc/tree/ike3-bots
 - WoTLK (Immersive only): To be done...
 - WoTLK (All mods): https://github.com/celguar/mangos-wotlk/tree/ike3-bots
+
+NOTE: The "Immersive only" version is provided as an example of where to place the code on the cmangos core in order to make it work, however it won't get updated to the latest core version unless the affected changes require it.
 
 2. Clone the core desired and generate the solution using cmake. This mod requires you to enable the "BUILD_IMMERSIVE" flag for it to compile.
 
