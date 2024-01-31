@@ -28,8 +28,13 @@ set(LIBRARY_SRCS ${immersive_source})
 # Define ENABLE_PLAYERBOTS if need
 if (BUILD_MANGOSBOTS OR BUILD_IKE3_BOTS)
 	include_directories(
+		${CMAKE_SOURCE_DIR}/src/game/DBScripts
 		${CMAKE_SOURCE_DIR}/src/game/Entities
 		${CMAKE_SOURCE_DIR}/src/game/Globals
+		${CMAKE_SOURCE_DIR}/src/game/Guilds
+		${CMAKE_SOURCE_DIR}/src/game/Maps
+		${CMAKE_SOURCE_DIR}/src/game/Server
+		${CMAKE_SOURCE_DIR}/src/shared
 		${CMAKE_SOURCE_DIR}/src/shared/Config
 		${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot
 		${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
