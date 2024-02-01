@@ -66,7 +66,7 @@ PlayerInfo extraPlayerInfo[MAX_RACES][MAX_CLASSES];
 
 PlayerInfo const* Immersive::GetPlayerInfo(uint32 race, uint32 class_)
 {
-#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
+#if EXPANSION > 0
     if (class_ == CLASS_SHAMAN && race == RACE_NIGHTELF)
     {
         PlayerInfo const* piSh = sObjectMgr.GetPlayerInfo(RACE_DRAENEI, class_);
@@ -203,7 +203,7 @@ float Immersive::GetFallDamage(Player* player, float zdist, float defaultVal)
     if (player->InBattleGround())
         return defaultVal;
 
-#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
+#if EXPANSION > 0
     // Don't get extra fall damage on arenas
     if (player->InArena())
         return defaultVal;
@@ -235,7 +235,7 @@ void Immersive::OnPlayerResurrect(Player *player)
     if (player->InBattleGround())
         return;
 
-#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
+#if EXPANSION > 0
     // Don't get extra fall damage on arenas
     if (player->InArena())
         return;
@@ -649,7 +649,7 @@ bool PlayerIsAlliance(Player* player)
     return race == RACE_HUMAN || 
            race == RACE_DWARF || 
            race == RACE_NIGHTELF ||
-#if defined (MANGOSBOT_ONE) || defined (MANGOSBOT_TWO) || MAX_EXPANSION >= 1
+#if EXPANSION > 0
            race == RACE_DRAENEI ||
 #endif
            race == RACE_GNOME;
@@ -1105,7 +1105,7 @@ uint32 Immersive::CalculateEffectiveChanceDelta(const Unit* unit)
 
 void Immersive::OnPlayerGossipHello(Player* player, Creature* creature)
 {
-#if defined (MANGOSBOT_ONE) || MAX_EXPANSION == 1
+#if EXPANSION == 1
     if (player && creature)
     {
         GossipMenu& menu = player->GetPlayerMenu()->GetGossipMenu();
