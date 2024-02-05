@@ -95,10 +95,10 @@ protected:
     virtual bool CheckSharedPercentReqsSingle(Player* player, Player* bot);
 };
 
-class Immersive
+class ImmersiveMgr
 {
 public:
-    Immersive();
+    ImmersiveMgr();
 
     void Init();
     void Update(uint32 elapsed);
@@ -159,6 +159,6 @@ private:
     uint32 updateDelay;
 };
 
-#define sImmersiveMgr MaNGOS::Singleton<Immersive>::Instance()
+#define sImmersiveMgr MaNGOS::Singleton<ImmersiveMgr>::Instance()
 
 #endif

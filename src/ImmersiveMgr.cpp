@@ -14,7 +14,7 @@
 #include "ChatHelper.h"
 #endif
 
-std::map<uint8, std::string> Immersive::statValues;
+std::map<uint8, std::string> ImmersiveMgr::statValues;
 
 std::string formatMoney(uint32 copper)
 {
@@ -53,7 +53,7 @@ std::string formatMoney(uint32 copper)
     return out.str();
 }
 
-Immersive::Immersive()
+ImmersiveMgr::ImmersiveMgr()
 {
     statValues[STAT_STRENGTH] = "Strength";
     statValues[STAT_AGILITY] = "Agility";
@@ -64,7 +64,7 @@ Immersive::Immersive()
 
 PlayerInfo extraPlayerInfo[MAX_RACES][MAX_CLASSES];
 
-PlayerInfo const* Immersive::GetPlayerInfo(uint32 race, uint32 class_)
+PlayerInfo const* ImmersiveMgr::GetPlayerInfo(uint32 race, uint32 class_)
 {
 #if EXPANSION > 0
     if (class_ == CLASS_SHAMAN && race == RACE_NIGHTELF)
@@ -97,7 +97,7 @@ PlayerInfo const* Immersive::GetPlayerInfo(uint32 race, uint32 class_)
     return sObjectMgr.GetPlayerInfo(race, class_);
 }
 
-void Immersive::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
+void ImmersiveMgr::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
 {
     if (!sImmersiveConfig.enabled) 
         return;
@@ -123,7 +123,7 @@ void Immersive::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
     }
 }
 
-void Immersive::OnPlayerGossipSelect(Player *player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData *menuData)
+void ImmersiveMgr::OnPlayerGossipSelect(Player *player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData *menuData)
 {
     if (gossipOptionId == GOSSIP_OPTION_IMMERSIVE)
     {
@@ -194,7 +194,7 @@ void Immersive::OnPlayerGossipSelect(Player *player, WorldObject* source, uint32
     }
 }
 
-float Immersive::GetFallDamage(Player* player, float zdist, float defaultVal)
+float ImmersiveMgr::GetFallDamage(Player* player, float zdist, float defaultVal)
 {
     if (!sImmersiveConfig.enabled || !player)
         return defaultVal;
@@ -220,7 +220,7 @@ float Immersive::GetFallDamage(Player* player, float zdist, float defaultVal)
     return 0.0055f * zdist * zdist * sImmersiveConfig.fallDamageMultiplier;
 }
 
-void Immersive::OnPlayerResurrect(Player *player)
+void ImmersiveMgr::OnPlayerResurrect(Player *player)
 {
     if (!sImmersiveConfig.enabled || !player)
         return;
@@ -296,7 +296,7 @@ std::string percent(Player *player)
 #endif
 }
 
-void Immersive::PrintHelp(Player *player, bool detailed, bool help)
+void ImmersiveMgr::PrintHelp(Player *player, bool detailed, bool help)
 {
     uint32 usedStats = GetUsedStats(player);
     uint32 totalStats = GetTotalStats(player);
@@ -318,7 +318,7 @@ void Immersive::PrintHelp(Player *player, bool detailed, bool help)
     }
 }
 
-void Immersive::PrintUsedStats(Player* player)
+void ImmersiveMgr::PrintUsedStats(Player* player)
 {
     uint32 owner = player->GetObjectGuid().GetRawValue();
     uint32 modifier = GetModifierValue(owner);
@@ -352,7 +352,7 @@ void Immersive::PrintUsedStats(Player* player)
                 out.str().c_str()));
 }
 
-void Immersive::PrintSuggestedStats(Player* player)
+void ImmersiveMgr::PrintSuggestedStats(Player* player)
 {
     std::ostringstream out;
     PlayerInfo const* info = GetPlayerInfo(player->getRace(), player->getClass());
@@ -380,7 +380,7 @@ void Immersive::PrintSuggestedStats(Player* player)
     }
 }
 
-void Immersive::ChangeModifier(Player *player, uint32 type)
+void ImmersiveMgr::ChangeModifier(Player *player, uint32 type)
 {
     if (!sImmersiveConfig.enabled) 
         return;
@@ -403,7 +403,7 @@ void Immersive::ChangeModifier(Player *player, uint32 type)
     player->UpdateAllStats();
 }
 
-void Immersive::IncreaseStat(Player *player, uint32 type)
+void ImmersiveMgr::IncreaseStat(Player *player, uint32 type)
 {
     if (!sImmersiveConfig.enabled)
     {
@@ -453,7 +453,7 @@ void Immersive::IncreaseStat(Player *player, uint32 type)
     player->SaveGoldToDB();
 }
 
-void Immersive::ResetStats(Player *player)
+void ImmersiveMgr::ResetStats(Player *player)
 {
     if (!sImmersiveConfig.enabled)
     {
@@ -479,7 +479,7 @@ void Immersive::ResetStats(Player *player)
     player->UpdateAllStats();
 }
 
-uint32 Immersive::GetTotalStats(Player *player, uint8 level)
+uint32 ImmersiveMgr::GetTotalStats(Player *player, uint8 level)
 {
     constexpr uint8 maxLvl = 60;
     if (!level) 
@@ -523,7 +523,7 @@ uint32 Immersive::GetTotalStats(Player *player, uint8 level)
     }
 }
 
-uint32 Immersive::GetUsedStats(Player *player)
+uint32 ImmersiveMgr::GetUsedStats(Player *player)
 {
     uint32 owner = player->GetObjectGuid().GetRawValue();
 
@@ -536,7 +536,7 @@ uint32 Immersive::GetUsedStats(Player *player)
     return usedStats;
 }
 
-uint32 Immersive::GetStatCost(Player *player, uint8 level, uint32 usedStats)
+uint32 ImmersiveMgr::GetStatCost(Player *player, uint8 level, uint32 usedStats)
 {
     if (!level) level = player->GetLevel();
     if (!usedStats) usedStats = GetUsedStats(player);
@@ -555,7 +555,7 @@ uint32 Immersive::GetStatCost(Player *player, uint8 level, uint32 usedStats)
     return sImmersiveConfig.manualAttributesCostMult * (usedLevels * usedLevels + 1);
 }
 
-uint32 Immersive::GetStatsValue(uint32 owner, const std::string& type)
+uint32 ImmersiveMgr::GetStatsValue(uint32 owner, const std::string& type)
 {
     uint32 value = valueCache[owner][type];
 
@@ -576,7 +576,7 @@ uint32 Immersive::GetStatsValue(uint32 owner, const std::string& type)
     return value;
 }
 
-void Immersive::SetStatsValue(uint32 owner, const std::string& type, uint32 value)
+void ImmersiveMgr::SetStatsValue(uint32 owner, const std::string& type, uint32 value)
 {
     valueCache[owner][type] = value;
     CharacterDatabase.DirectPExecute("delete from immersive_values where owner = '%u' and `type` = '%s'",
@@ -590,24 +590,24 @@ void Immersive::SetStatsValue(uint32 owner, const std::string& type, uint32 valu
     }
 }
 
-uint32 Immersive::GetStatsValue(uint32 owner, uint8 type)
+uint32 ImmersiveMgr::GetStatsValue(uint32 owner, uint8 type)
 {
-    return GetStatsValue(owner, Immersive::statValues[type]);
+    return GetStatsValue(owner, ImmersiveMgr::statValues[type]);
 }
 
-void Immersive::SetStatsValue(uint32 owner, uint8 type, uint32 value)
+void ImmersiveMgr::SetStatsValue(uint32 owner, uint8 type, uint32 value)
 {
-    SetStatsValue(owner, Immersive::statValues[type], value);
+    SetStatsValue(owner, ImmersiveMgr::statValues[type], value);
 }
 
-uint32 Immersive::GetModifierValue(uint32 owner)
+uint32 ImmersiveMgr::GetModifierValue(uint32 owner)
 {
     int modifier = GetStatsValue(owner, "modifier");
     if (!modifier) modifier = 100;
     return modifier;
 }
 
-void Immersive::SendSysMessage(Player *player, const std::string& message)
+void ImmersiveMgr::SendSysMessage(Player *player, const std::string& message)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (player->GetPlayerbotAI())
@@ -620,7 +620,7 @@ void Immersive::SendSysMessage(Player *player, const std::string& message)
     ChatHandler(player).PSendSysMessage(message.c_str());
 }
 
-std::string Immersive::FormatString(const char* format, ...)
+std::string ImmersiveMgr::FormatString(const char* format, ...)
 {
     va_list ap;
     char out[2048];
@@ -702,7 +702,7 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
     return true;
 }
 
-void Immersive::RunAction(Player* player, ImmersiveAction* action)
+void ImmersiveMgr::RunAction(Player* player, ImmersiveAction* action)
 {
     bool first = true, needMsg = false;
     std::ostringstream out; out << "|cffffff00";
@@ -763,7 +763,7 @@ public:
 
     std::string GetActionMessage(Player* player) override
     {
-        return Immersive::FormatString(
+        return ImmersiveMgr::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
                value);
     }
@@ -773,7 +773,7 @@ private:
 };
 #endif
 
-void Immersive::OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim)
+void ImmersiveMgr::OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled) 
@@ -797,7 +797,7 @@ void Immersive::OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim)
 #endif
 }
 
-void Immersive::OnPlayerGiveLevel(Player* player)
+void ImmersiveMgr::OnPlayerGiveLevel(Player* player)
 {
     if (!sImmersiveConfig.enabled)
         return;
@@ -836,7 +836,7 @@ public:
 
     std::string GetActionMessage(Player* player) override
     {
-        return Immersive::FormatString
+        return ImmersiveMgr::FormatString
         (
             sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
             ai::ChatHelper::formatMoney(value).c_str()
@@ -848,7 +848,7 @@ private:
 };
 #endif
 
-void Immersive::OnPlayerModifyMoney(Player *player, int32 delta)
+void ImmersiveMgr::OnPlayerModifyMoney(Player *player, int32 delta)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled) 
@@ -892,7 +892,7 @@ public:
 
     string GetActionMessage(Player* player) override
     {
-        return Immersive::FormatString(
+        return ImmersiveMgr::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_REPUTATION_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
                value);
     }
@@ -903,7 +903,7 @@ private:
 };
 #endif
 
-void Immersive::OnPlayerSetReputation(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental)
+void ImmersiveMgr::OnPlayerSetReputation(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled)
@@ -961,7 +961,7 @@ public:
 
     std::string GetActionMessage(Player* player) override
     {
-        return Immersive::FormatString(
+        return ImmersiveMgr::FormatString(
                sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
                quest->GetTitle().c_str());
     }
@@ -971,7 +971,7 @@ private:
 };
 #endif
 
-void Immersive::OnPlayerRewardQuest(Player* player, Quest const* quest)
+void ImmersiveMgr::OnPlayerRewardQuest(Player* player, Quest const* quest)
 {
 #ifdef ENABLE_MANGOSBOTS
     if (!sImmersiveConfig.enabled)
@@ -991,7 +991,7 @@ void Immersive::OnPlayerRewardQuest(Player* player, Quest const* quest)
 #endif
 }
 
-bool Immersive::OnPlayerUseFishingNode(Player* player, bool success)
+bool ImmersiveMgr::OnPlayerUseFishingNode(Player* player, bool success)
 {
     if (!sImmersiveConfig.enabled || !success)
         return success;
@@ -1032,7 +1032,7 @@ bool Immersive::OnPlayerUseFishingNode(Player* player, bool success)
     return false;
 }
 
-int32 Immersive::CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type)
+int32 ImmersiveMgr::CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type)
 {
     if (!sImmersiveConfig.enabled) 
         return difference;
@@ -1088,7 +1088,7 @@ int32 Immersive::CalculateEffectiveChance(int32 difference, const Unit* attacker
     return difference;
 }
 
-uint32 Immersive::CalculateEffectiveChanceDelta(const Unit* unit)
+uint32 ImmersiveMgr::CalculateEffectiveChanceDelta(const Unit* unit)
 {
     if (unit->GetObjectGuid().IsPlayer())
     {
@@ -1103,7 +1103,7 @@ uint32 Immersive::CalculateEffectiveChanceDelta(const Unit* unit)
     return 0;
 }
 
-void Immersive::OnPlayerGossipHello(Player* player, Creature* creature)
+void ImmersiveMgr::OnPlayerGossipHello(Player* player, Creature* creature)
 {
 #if EXPANSION == 1
     if (player && creature)
@@ -1127,7 +1127,7 @@ void Immersive::OnPlayerGossipHello(Player* player, Creature* creature)
 }
 
 std::map<uint8,float> scale;
-void Immersive::CheckScaleChange(Player* player)
+void ImmersiveMgr::CheckScaleChange(Player* player)
 {
     if (!sImmersiveConfig.enabled) 
         return;
@@ -1153,7 +1153,7 @@ void Immersive::CheckScaleChange(Player* player)
     }
 }
 
-void Immersive::Update(uint32 elapsed)
+void ImmersiveMgr::Update(uint32 elapsed)
 {
     if (!sImmersiveConfig.enabled)
         return;
@@ -1172,7 +1172,7 @@ void Immersive::Update(uint32 elapsed)
     }
 }
 
-void Immersive::Init()
+void ImmersiveMgr::Init()
 {
     sImmersiveConfig.Initialize();
 
@@ -1186,12 +1186,12 @@ void Immersive::Init()
     }
 }
 
-bool Immersive::OnPlayerPrepareUnitGossipMenu(uint32 optionId)
+bool ImmersiveMgr::OnPlayerPrepareUnitGossipMenu(uint32 optionId)
 {
     return optionId == GOSSIP_OPTION_IMMERSIVE;
 }
 
-void Immersive::DisableOfflineRespawn()
+void ImmersiveMgr::DisableOfflineRespawn()
 {
     uint32 lastPing = GetStatsValue(0, "last_ping");
     if (!lastPing) return;
@@ -1210,7 +1210,7 @@ void Immersive::DisableOfflineRespawn()
     CharacterDatabase.CommitTransaction();
 }
 
-bool Immersive::CanCreatureRespawn(Creature* creature) const
+bool ImmersiveMgr::CanCreatureRespawn(Creature* creature) const
 {
     if (sImmersiveConfig.enabled)
     {
@@ -1232,9 +1232,9 @@ bool Immersive::CanCreatureRespawn(Creature* creature) const
     return true;
 }
 
-float Immersive::GetFallThreshold(const float defaultVal)
+float ImmersiveMgr::GetFallThreshold(const float defaultVal)
 {
     return sImmersiveConfig.enabled ? 4.57f : defaultVal;
 }
 
-INSTANTIATE_SINGLETON_1( Immersive );
+INSTANTIATE_SINGLETON_1( ImmersiveMgr );
