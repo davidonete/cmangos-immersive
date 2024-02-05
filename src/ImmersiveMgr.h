@@ -17,8 +17,6 @@ struct GossipMenuItemData;
 struct PlayerInfo;
 struct PlayerLevelInfo;
 
-enum Stats;
-
 enum ImmersiveEffectiveChance
 {
     IMMERSIVE_EFFECTIVE_CHANCE_MISS,
@@ -108,7 +106,7 @@ public:
     static std::string FormatString(const char* format, ...);
 
     // Fall damage
-    float GetFallThreshold(const float default);
+    float GetFallThreshold(const float defaultVal);
     float GetFallDamage(Player* player, float zdist, float defaultVal);
 
     // Respawn
@@ -136,9 +134,9 @@ public:
 private:
     uint32 CalculateEffectiveChanceDelta(const Unit* unit);
     uint32 GetModifierValue(uint32 owner);
-    uint32 GetStatsValue(uint32 owner, Stats type);
+    uint32 GetStatsValue(uint32 owner, uint8 type);
     uint32 GetStatsValue(uint32 owner, const std::string& type);
-    void SetStatsValue(uint32 owner, Stats type, uint32 value);
+    void SetStatsValue(uint32 owner, uint8 type, uint32 value);
     void SetStatsValue(uint32 owner, const std::string& type, uint32 value);
     uint32 GetTotalStats(Player* player, uint8 level = 0);
     uint32 GetUsedStats(Player* player);
@@ -156,7 +154,7 @@ private:
     void RunAction(Player* player, ImmersiveAction* action);
 
 private:
-    static std::map<Stats, std::string> statValues;
+    static std::map<uint8, std::string> statValues;
     std::map< uint32, std::map<std::string, uint32> > valueCache;
     uint32 updateDelay;
 };

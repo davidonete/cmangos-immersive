@@ -14,7 +14,7 @@
 #include "ChatHelper.h"
 #endif
 
-std::map<Stats, std::string> Immersive::statValues;
+std::map<uint8, std::string> Immersive::statValues;
 
 std::string formatMoney(uint32 copper)
 {
@@ -590,12 +590,12 @@ void Immersive::SetStatsValue(uint32 owner, const std::string& type, uint32 valu
     }
 }
 
-uint32 Immersive::GetStatsValue(uint32 owner, Stats type)
+uint32 Immersive::GetStatsValue(uint32 owner, uint8 type)
 {
     return GetStatsValue(owner, Immersive::statValues[type]);
 }
 
-void Immersive::SetStatsValue(uint32 owner, Stats type, uint32 value)
+void Immersive::SetStatsValue(uint32 owner, uint8 type, uint32 value)
 {
     SetStatsValue(owner, Immersive::statValues[type], value);
 }
@@ -1232,9 +1232,9 @@ bool Immersive::CanCreatureRespawn(Creature* creature) const
     return true;
 }
 
-float Immersive::GetFallThreshold(const float default)
+float Immersive::GetFallThreshold(const float defaultVal)
 {
-    return sImmersiveConfig.enabled ? 4.57f : default;
+    return sImmersiveConfig.enabled ? 4.57f : defaultVal;
 }
 
 INSTANTIATE_SINGLETON_1( Immersive );
