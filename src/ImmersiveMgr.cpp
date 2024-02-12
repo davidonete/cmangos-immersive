@@ -1040,12 +1040,17 @@ int32 ImmersiveMgr::CalculateEffectiveChance(int32 difference, const Unit* attac
     if (!sImmersiveConfig.manualAttributes)
         return difference;
 
+    if (!attacker || !victim)
+        return difference;
+
     int32 attackerDelta = CalculateEffectiveChanceDelta(attacker);
     int32 victimDelta = CalculateEffectiveChanceDelta(victim);
 
     int32 multiplier = 5;
     if (type == IMMERSIVE_EFFECTIVE_CHANCE_SPELL_MISS || type == IMMERSIVE_EFFECTIVE_ATTACK_DISTANCE)
+    {
         multiplier = 1;
+    }
 
     switch (type)
     {
@@ -1090,13 +1095,15 @@ int32 ImmersiveMgr::CalculateEffectiveChance(int32 difference, const Unit* attac
 
 uint32 ImmersiveMgr::CalculateEffectiveChanceDelta(const Unit* unit)
 {
-    if (unit->GetObjectGuid().IsPlayer())
+    if (unit->IsPlayer())
     {
         int modifier = GetModifierValue(unit->GetObjectGuid().GetCounter());
+
 #ifdef ENABLE_MANGOSBOTS
         if (sPlayerbotAIConfig.IsInRandomAccountList(sObjectMgr.GetPlayerAccountIdByGUID(unit->GetObjectGuid())))
             return 0;
 #endif
+
         return unit->GetLevel() * (100 - modifier) / 100;
     }
 
