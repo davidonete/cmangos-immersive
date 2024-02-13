@@ -107,9 +107,12 @@ void ImmersiveMgr::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
 
 #ifdef ENABLE_MANGOSBOTS
     // Don't use custom stats on random bots
-    uint32 account = sObjectMgr.GetPlayerAccountIdByGUID(player->GetObjectGuid());
-    if (sPlayerbotAIConfig.IsInRandomAccountList(account))
-        return;
+    if (!player->isRealPlayer())
+    {
+        const uint32 account = sObjectMgr.GetPlayerAccountIdByGUID(player->GetObjectGuid());
+        if (sPlayerbotAIConfig.IsInRandomAccountList(account))
+            return;
+    }
 #endif
 
     PlayerInfo const* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
@@ -1097,13 +1100,17 @@ uint32 ImmersiveMgr::CalculateEffectiveChanceDelta(const Unit* unit)
 {
     if (unit->IsPlayer())
     {
-        int modifier = GetModifierValue(unit->GetObjectGuid().GetCounter());
-
 #ifdef ENABLE_MANGOSBOTS
-        if (sPlayerbotAIConfig.IsInRandomAccountList(sObjectMgr.GetPlayerAccountIdByGUID(unit->GetObjectGuid())))
-            return 0;
+        // Random bots should not be affected by this
+        if (!((Player*)unit)->isRealPlayer())
+        {
+            const uint32 account = sObjectMgr.GetPlayerAccountIdByGUID(unit->GetObjectGuid());
+            if (sPlayerbotAIConfig.IsInRandomAccountList(account))
+                return 0;
+        }
 #endif
 
+        const uint32 modifier = GetModifierValue(unit->GetObjectGuid().GetCounter());
         return unit->GetLevel() * (100 - modifier) / 100;
     }
 
