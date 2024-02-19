@@ -107,12 +107,8 @@ void ImmersiveMgr::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
 
 #ifdef ENABLE_PLAYERBOTS
     // Don't use custom stats on random bots
-    if (!player->isRealPlayer())
-    {
-        const uint32 account = sObjectMgr.GetPlayerAccountIdByGUID(player->GetObjectGuid());
-        if (sPlayerbotAIConfig.IsInRandomAccountList(account))
-            return;
-    }
+    if (!player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player))
+        return;
 #endif
 
     PlayerInfo const* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
@@ -215,9 +211,7 @@ float ImmersiveMgr::GetFallDamage(Player* player, float zdist, float defaultVal)
 #ifdef ENABLE_PLAYERBOTS
     // Don't apply extra fall damage on bots
     if (!player->isRealPlayer())
-    {
         return defaultVal;
-    }
 #endif
 
     return 0.0055f * zdist * zdist * sImmersiveConfig.fallDamageMultiplier;
@@ -1107,12 +1101,8 @@ uint32 ImmersiveMgr::CalculateEffectiveChanceDelta(const Unit* unit)
     {
 #ifdef ENABLE_PLAYERBOTS
         // Random bots should not be affected by this
-        if (!((Player*)unit)->isRealPlayer())
-        {
-            const uint32 account = sObjectMgr.GetPlayerAccountIdByGUID(unit->GetObjectGuid());
-            if (sPlayerbotAIConfig.IsInRandomAccountList(account))
-                return 0;
-        }
+        if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+            return 0;
 #endif
 
         const uint32 modifier = GetModifierValue(unit->GetObjectGuid().GetCounter());
