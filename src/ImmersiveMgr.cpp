@@ -808,6 +808,11 @@ void ImmersiveMgr::OnPlayerGiveLevel(Player* player)
     if (!sImmersiveConfig.manualAttributes)
         return;
 
+#ifdef ENABLE_PLAYERBOTS
+    if (!player->isRealPlayer())
+        return;
+#endif
+
     const uint32 usedStats = GetUsedStats(player);
     const uint32 totalStats = GetTotalStats(player);
     const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
