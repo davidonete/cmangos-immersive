@@ -8,7 +8,7 @@
 #include "Tools/Language.h"
 #include "World/World.h"
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotAI.h"
 #include "ChatHelper.h"
@@ -105,7 +105,7 @@ void ImmersiveMgr::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
     if (!sImmersiveConfig.manualAttributes) 
         return;
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     // Don't use custom stats on random bots
     if (!player->isRealPlayer())
     {
@@ -212,7 +212,7 @@ float ImmersiveMgr::GetFallDamage(Player* player, float zdist, float defaultVal)
         return defaultVal;
 #endif
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     // Don't apply extra fall damage on bots
     if (!player->isRealPlayer())
     {
@@ -228,7 +228,7 @@ void ImmersiveMgr::OnPlayerResurrect(Player *player)
     if (!sImmersiveConfig.enabled || !player)
         return;
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     // Don't lose stats on bots
     if (!player->isRealPlayer())
         return;
@@ -292,7 +292,7 @@ void ImmersiveMgr::OnPlayerResurrect(Player *player)
 
 std::string percent(Player *player)
 {
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     return player->GetPlayerbotAI() ? "%" : "%%";
 #else
     return "%%";
@@ -612,7 +612,7 @@ uint32 ImmersiveMgr::GetModifierValue(uint32 owner)
 
 void ImmersiveMgr::SendSysMessage(Player *player, const std::string& message)
 {
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     if (player->GetPlayerbotAI())
     {
         player->GetPlayerbotAI()->TellPlayerNoFacing(player->GetPlayerbotAI()->GetMaster(), message);
@@ -709,7 +709,7 @@ void ImmersiveMgr::RunAction(Player* player, ImmersiveAction* action)
 {
     bool first = true, needMsg = false;
     std::ostringstream out; out << "|cffffff00";
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     for (PlayerBotMap::const_iterator i = player->GetPlayerbotMgr()->GetPlayerBotsBegin(); i != player->GetPlayerbotMgr()->GetPlayerBotsEnd(); ++i)
     {
         Player *bot = i->second;
@@ -735,7 +735,7 @@ uint32 ApplyRandomPercent(uint32 value)
     return value + (uint32) (value * percent / 100.0f);
 }
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
 class OnGiveXPAction : public ImmersiveAction
 {
 public:
@@ -778,7 +778,7 @@ private:
 
 void ImmersiveMgr::OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim)
 {
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     if (!sImmersiveConfig.enabled) 
         return;
 
@@ -819,7 +819,7 @@ void ImmersiveMgr::OnPlayerGiveLevel(Player* player)
     }
 }
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
 class OnGiveMoneyAction : public ImmersiveAction
 {
 public:
@@ -853,7 +853,7 @@ private:
 
 void ImmersiveMgr::OnPlayerModifyMoney(Player *player, int32 delta)
 {
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     if (!sImmersiveConfig.enabled) 
         return;
 
@@ -874,7 +874,7 @@ void ImmersiveMgr::OnPlayerModifyMoney(Player *player, int32 delta)
 #endif
 }
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
 class OnReputationChangeAction : public ImmersiveAction
 {
 public:
@@ -908,7 +908,7 @@ private:
 
 void ImmersiveMgr::OnPlayerSetReputation(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental)
 {
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     if (!sImmersiveConfig.enabled)
         return;
 
@@ -929,7 +929,7 @@ void ImmersiveMgr::OnPlayerSetReputation(Player* player, FactionEntry const* fac
 #endif
 }
 
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
 class OnRewardQuestAction : public ImmersiveAction
 {
 public:
@@ -976,7 +976,7 @@ private:
 
 void ImmersiveMgr::OnPlayerRewardQuest(Player* player, Quest const* quest)
 {
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
     if (!sImmersiveConfig.enabled)
         return;
 
@@ -1100,7 +1100,7 @@ uint32 ImmersiveMgr::CalculateEffectiveChanceDelta(const Unit* unit)
 {
     if (unit->IsPlayer())
     {
-#ifdef ENABLE_MANGOSBOTS
+#ifdef ENABLE_PLAYERBOTS
         // Random bots should not be affected by this
         if (!((Player*)unit)->isRealPlayer())
         {

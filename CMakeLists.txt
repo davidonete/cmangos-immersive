@@ -26,7 +26,7 @@ file(GLOB immersive_source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT
 set(LIBRARY_SRCS ${immersive_source})
 
 # Define ENABLE_PLAYERBOTS if need
-if (BUILD_MANGOSBOTS OR BUILD_IKE3_BOTS)
+if (BUILD_PLAYERBOTS OR BUILD_IKE3_BOTS)
 	include_directories(
 		${CMAKE_SOURCE_DIR}/dep/g3dlite
 		${CMAKE_SOURCE_DIR}/src/game/Chat
@@ -46,11 +46,12 @@ if (BUILD_MANGOSBOTS OR BUILD_IKE3_BOTS)
 		${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
 	)
 
-	add_definitions(-DENABLE_MANGOSBOTS)
-	
-	if (BUILD_IKE3_BOTS)
-		add_definitions(-DENABLE_PLAYERBOTS)
+	# delete this once bots are merged into cmangos
+	if (BUILD_PLAYERBOTS)
+		add_definitions(-DENABLE_MANGOSBOTS)
 	endif()
+
+	add_definitions(-DENABLE_PLAYERBOTS)
 endif()
 
 add_definitions(-DENABLE_IMMERSIVE)
