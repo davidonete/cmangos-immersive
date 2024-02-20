@@ -555,7 +555,6 @@ uint32 ImmersiveMgr::GetStatCost(Player *player, uint8 level, uint32 usedStats)
 uint32 ImmersiveMgr::GetStatsValue(uint32 owner, const std::string& type)
 {
     uint32 value = valueCache[owner][type];
-
     if (!value)
     {
         auto results = CharacterDatabase.PQuery(
