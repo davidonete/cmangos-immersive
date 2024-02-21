@@ -54,6 +54,8 @@ if (BUILD_PLAYERBOTS OR BUILD_IKE3_BOTS)
 	add_definitions(-DENABLE_PLAYERBOTS)
 endif()
 
+include_directories(${CMAKE_SOURCE_DIR}/src/modules/modules/src)
+
 add_definitions(-DENABLE_IMMERSIVE)
 
 # Define Expansion

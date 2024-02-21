@@ -1,11 +1,9 @@
-#include "ImmersiveConfig.h"
-
+#include "ImmersiveModuleConfig.h"
 #include "Log.h"
-#include "Policies/Singleton.h"
-#include "SystemConfig.h"
 
-ImmersiveConfig::ImmersiveConfig()
-: enabled(false)
+ImmersiveModuleConfig::ImmersiveModuleConfig()
+: ModuleConfig("immersive.conf")
+, enabled(false)
 , manualAttributes(false)
 , manualAttributesPercent(0)
 , manualAttributesIncrease(0)
@@ -31,17 +29,9 @@ ImmersiveConfig::ImmersiveConfig()
 
 }
 
-INSTANTIATE_SINGLETON_1(ImmersiveConfig);
-
-bool ImmersiveConfig::Initialize()
+bool ImmersiveModuleConfig::OnLoad()
 {
-    sLog.outString("Initializing Immersive by ike3");
-
-    if (!config.SetSource(SYSCONFDIR"immersive.conf"))
-    {
-        sLog.outError("Failed to open configuration file immersive.conf");
-        return false;
-    }
+    sLog.outString("Initializing Immersive module configuration");
 
     enabled = config.GetBoolDefault("Immersive.Enable", false);
     manualAttributes = config.GetBoolDefault("Immersive.ManualAttributes", false);
@@ -67,6 +57,6 @@ bool ImmersiveConfig::Initialize()
     disableOfflineRespawn = config.GetBoolDefault("Immersive.DisableOfflineRespawn", false);
     disableInstanceRespawn = config.GetBoolDefault("Immersive.DisableInstanceRespawn", false);
 
-    sLog.outString("Immersive configuration loaded");
+    sLog.outString("Immersive module configuration loaded");
     return true;
 }
