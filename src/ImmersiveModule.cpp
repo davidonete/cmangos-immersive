@@ -533,6 +533,9 @@ bool ImmersiveModule::OnPrepareGossipMenu(Player* player, WorldObject* source, c
 
 bool ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
 {
+    if (!GetConfig()->enabled)
+        return false;
+
 #if EXPANSION == 1
     if (player && creature)
     {

@@ -71,7 +71,6 @@ private:
     const PlayerInfo* GetPlayerInfo(uint32 race, uint32 class_);
     int32 CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type);
 
-private:
     uint32 CalculateEffectiveChanceDelta(const Unit* unit);
     uint32 GetModifierValue(uint32 owner);
     uint32 GetStatsValue(uint32 owner, uint8 type);
