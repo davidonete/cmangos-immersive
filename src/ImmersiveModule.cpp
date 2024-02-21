@@ -1,9 +1,9 @@
 #include "ImmersiveModule.h"
 #include "ImmersiveModuleConfig.h"
 
+#include "Entities/Creature.h"
 #include "Entities/GossipDef.h"
 #include "Entities/Player.h"
-#include "Entities/Creature.h"
 #include "Globals/SharedDefines.h"
 #include "Globals/ObjectMgr.h"
 #include "Log.h"
