@@ -621,6 +621,46 @@ bool ImmersiveModule::OnUseFishingNode(GameObject* gameObject, Player* player)
     return false;
 }
 
+bool ImmersiveModule::OnCalculateEffectiveDodgeChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float& outChance)
+{
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (unit)
+        {
+            outChance = 0.0f;
+            outChance += unit->GetDodgeChance();
+
+            // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
+            if (outChance < 0.005f)
+            {
+                outChance = 0.0f;
+                return outChance;
+            }
+
+            const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
+            // Skill difference can be negative (and reduce our chance to mitigate an attack), which means:
+            // a) Attacker's level is higher
+            // b) Attacker has +skill bonuses
+            const bool isPlayerOrPet = unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            const uint32 skill = (weapon ? attacker->GetWeaponSkillValue((WeaponAttackType)attType, unit) : attacker->GetSkillMaxForLevel(unit));
+            int32 difference = int32(unit->GetDefenseSkillValue(attacker) - skill);
+            difference = CalculateEffectiveChance(difference, attacker, unit, IMMERSIVE_EFFECTIVE_CHANCE_DODGE);
+
+            // Defense/weapon skill factor: for players and NPCs
+            float factor = 0.04f;
+            // NPCs gain additional bonus dodge chance based on positive skill difference
+            if (!isPlayerOrPet && difference > 0)
+                factor = 0.1f;
+
+            outChance += (difference * factor);
+            outChance = std::max(0.0f, std::min(outChance, 100.0f));
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool ImmersiveModule::OnCalculateEffectiveBlockChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float &outChance)
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
@@ -841,6 +881,109 @@ bool ImmersiveModule::OnCalculateEffectiveMissChance(const Unit* unit, const Uni
             outChance -= (ability ? unit->GetHitChance(ability, SPELL_SCHOOL_MASK_NORMAL) : unit->GetHitChance((WeaponAttackType)attType));
             float minimum = (ability && ability->DmgClass == SPELL_DAMAGE_CLASS_MAGIC) || difference > 10 ? 1.f : 0;
             outChance = std::max(minimum, std::min(outChance, 100.0f));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ImmersiveModule::OnCalculateSpellMissChance(const Unit* unit, const Unit* victim, uint32 schoolMask, const SpellEntry* spell, float& outChance)
+{
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (unit)
+        {
+            outChance = 0.0f;
+            const float minimum = 1.0f; // Pre-WotLK: unavoidable spellInfo miss is at least 1%
+
+            if (spell->HasAttribute(SPELL_ATTR_EX3_NORMAL_RANGED_ATTACK) || spell->DmgClass == SPELL_DAMAGE_CLASS_MELEE || spell->DmgClass == SPELL_DAMAGE_CLASS_RANGED)
+            {
+                outChance = unit->CalculateEffectiveMissChance(victim, GetWeaponAttackType(spell), spell);
+                return true;
+            }
+
+            outChance += victim->GetMissChance(spell, (SpellSchoolMask)schoolMask);
+            // Victim's own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit can't be missed
+            if (outChance < 0.005f)
+                return 0.0f;
+
+            // Level difference: positive adds to miss chance, negative substracts
+            const bool vsPlayerOrPet = victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            int32 difference = int32(victim->GetLevelForTarget(unit) - unit->GetLevelForTarget(victim));
+            difference = CalculateEffectiveChance(difference, unit, victim, IMMERSIVE_EFFECTIVE_CHANCE_SPELL_MISS);
+
+            // Level difference factor: 1% per level
+            uint8 factor = 1;
+            // NPCs and players gain additional bonus to incoming spellInfo hit chance reduction based on positive level difference
+            if (difference > 2)
+            {
+                outChance += (2 * factor);
+                // Miss bonus for each additional level of difference above 2
+                factor = (vsPlayerOrPet ? 7 : 11);
+                outChance += ((difference - 2) * factor);
+            }
+            else
+            {
+                outChance += (difference * factor);
+            }
+
+            // Reduce by caster's spellInfo hit chance
+            outChance -= unit->GetHitChance(spell, (SpellSchoolMask)schoolMask);
+            // Reduce (or increase) by victim SPELL_AURA_MOD_ATTACKER_SPELL_HIT_CHANCE auras
+            outChance -= victim->GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_ATTACKER_SPELL_HIT_CHANCE, schoolMask);
+            outChance = std::max(minimum, std::min(outChance, 100.0f));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ImmersiveModule::OnGetAttackDistance(const Unit* unit, const Unit* target, float& outDistance)
+{
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (unit)
+        {
+            float aggroRate = sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
+            uint32 playerlevel = target->GetLevelForTarget(unit);
+            uint32 creaturelevel = unit->GetLevelForTarget(target);
+
+            int32 leveldif = int32(playerlevel) - int32(creaturelevel);
+            leveldif = CalculateEffectiveChance(leveldif, unit, target, IMMERSIVE_EFFECTIVE_ATTACK_DISTANCE);
+
+            // "The maximum Aggro Radius has a cap of 25 levels under. Example: A level 30 char has the same Aggro Radius of a level 5 char on a level 60 mob."
+            if (leveldif < -25)
+                leveldif = -25;
+
+            // "The aggro radius of a mob having the same level as the player is roughly 18 yards"
+            outDistance = unit->GetDetectionRange();
+            if (outDistance == 0.f)
+            {
+                outDistance = 0.0f;
+                return true;
+            }
+
+            // "Aggro Radius varies with level difference at a rate of roughly 1 yard/level"
+            // radius grow if playlevel < creaturelevel
+            outDistance -= (float)leveldif;
+
+            // detect range auras
+            outDistance += unit->GetTotalAuraModifier(SPELL_AURA_MOD_DETECT_RANGE);
+
+            // detected range auras
+            outDistance += target->GetTotalAuraModifier(SPELL_AURA_MOD_DETECTED_RANGE);
+
+            // "Minimum Aggro Radius for a mob seems to be combat range (5 yards)"
+            if (outDistance < 5)
+                outDistance = 5;
+
+            if (target->IsPlayerControlled() && target->IsCreature() && !target->IsClientControlled()) // player pets do not aggro from so afar
+                outDistance = outDistance * 0.65f;
+
+            outDistance = (outDistance * aggroRate);
+
             return true;
         }
     }
