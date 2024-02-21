@@ -1,10 +1,12 @@
 #include "ImmersiveModule.h"
 #include "ImmersiveModuleConfig.h"
 
+#include "Entities/Creature.h"
 #include "Entities/GossipDef.h"
 #include "Entities/Player.h"
 #include "Globals/SharedDefines.h"
 #include "Globals/ObjectMgr.h"
+#include "Log.h"
 #include "Tools/Language.h"
 #include "World/World.h"
 
@@ -14,7 +16,10 @@
 #include "ChatHelper.h"
 #endif
 
-std::map<uint8, std::string> ImmersiveModule::statValues;
+bool IsMaxLevel(Player* player)
+{
+    return player && player->GetLevel() >= 60 + (10 * EXPANSION);
+}
 
 std::string formatMoney(uint32 copper)
 {
@@ -33,27 +38,49 @@ std::string formatMoney(uint32 copper)
     bool space = false;
     if (gold > 0)
     {
-        out << gold <<  "g";
+        out << gold << "g";
         space = true;
     }
 
     if (silver > 0 && gold < 50)
     {
         if (space) out << " ";
-        out << silver <<  "s";
+        out << silver << "s";
         space = true;
     }
 
     if (copper > 0 && gold < 10)
     {
         if (space) out << " ";
-        out << copper <<  "c";
+        out << copper << "c";
     }
 
     return out.str();
 }
 
+std::string percent(Player* player)
+{
+#ifdef ENABLE_PLAYERBOTS
+    return player->GetPlayerbotAI() ? "%" : "%%";
+#else
+    return "%%";
+#endif
+}
+
+std::string FormatString(const char* format, ...)
+{
+    va_list ap;
+    char out[2048];
+    va_start(ap, format);
+    vsnprintf(out, 2048, format, ap);
+    va_end(ap);
+    return std::string(out);
+}
+
+std::map<uint8, std::string> ImmersiveModule::statValues;
+
 ImmersiveModule::ImmersiveModule()
+: Module("Immersive")
 {
     statValues[STAT_STRENGTH] = "Strength";
     statValues[STAT_AGILITY] = "Agility";
@@ -62,72 +89,318 @@ ImmersiveModule::ImmersiveModule()
     statValues[STAT_SPIRIT] = "Spirit";
 }
 
-PlayerInfo extraPlayerInfo[MAX_RACES][MAX_CLASSES];
-
-PlayerInfo const* ImmersiveModule::GetPlayerInfo(uint32 race, uint32 class_)
+void ImmersiveModule::OnInitialize()
 {
-#if EXPANSION > 0
-    if (class_ == CLASS_SHAMAN && race == RACE_NIGHTELF)
+    if (GetConfig()->enabled)
     {
-        PlayerInfo const* piSh = sObjectMgr.GetPlayerInfo(RACE_DRAENEI, class_);
-        PlayerInfo *result = &extraPlayerInfo[race][class_];
-        memcpy(result, piSh, sizeof(PlayerInfo));
-
-        PlayerInfo const* piDr = sObjectMgr.GetPlayerInfo(race, CLASS_DRUID);
-        result->displayId_f = piDr->displayId_f;
-        result->displayId_m = piDr->displayId_m;
-
-        return result;
+        if (GetConfig()->disableOfflineRespawn || GetConfig()->disableInstanceRespawn)
+        {
+            updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
+            DisableOfflineRespawn();
+        }
     }
-#endif
-
-    if (class_ == CLASS_DRUID && race == RACE_TROLL)
-    {
-        PlayerInfo const* piSh = sObjectMgr.GetPlayerInfo(RACE_TAUREN, class_);
-        PlayerInfo *result = &extraPlayerInfo[race][class_];
-        memcpy(result, piSh, sizeof(PlayerInfo));
-
-        PlayerInfo const* piDr = sObjectMgr.GetPlayerInfo(race, CLASS_SHAMAN);
-        result->displayId_f = piDr->displayId_f;
-        result->displayId_m = piDr->displayId_m;
-
-        return result;
-    }
-
-    return sObjectMgr.GetPlayerInfo(race, class_);
 }
 
-void ImmersiveModule::GetPlayerLevelInfo(Player *player, PlayerLevelInfo* info)
+void ImmersiveModule::OnUpdate(uint32 elapsed)
 {
-    if (!sImmersiveConfig.enabled) 
-        return;
+    if (GetConfig()->enabled)
+    {
+        if (GetConfig()->disableOfflineRespawn || GetConfig()->disableInstanceRespawn)
+        {
+            if (updateDelay > elapsed)
+            {
+                updateDelay -= elapsed;
+            }
+            else
+            {
+                updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
+                SetStatsValue(0, "last_ping", sWorld.GetGameTime());
+            }
+        }
+    }
+}
 
-    if (!sImmersiveConfig.manualAttributes) 
+bool ImmersiveModule::OnHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ)
+{
+    if (GetConfig()->enabled)
+    {
+        if (player)
+        {
+            // calculate total z distance of the fall
+            const Position & position = movementInfo.GetPos();
+            float z_diff = lastFallZ - position.z;
+            DEBUG_LOG("zDiff = %f", z_diff);
+
+            // Players with low fall distance, Feather Fall or physical immunity (charges used) are ignored
+            // 14.57 can be calculated by resolving damageperc formula below to 0
+            if (z_diff >= 14.57f && !player->IsDead() && !player->IsGameMaster() && !player->HasMovementFlag(MOVEFLAG_ONTRANSPORT) &&
+                !player->HasAuraType(SPELL_AURA_HOVER) && !player->HasAuraType(SPELL_AURA_FEATHER_FALL) &&
+                !player->IsImmuneToDamage(SPELL_SCHOOL_MASK_NORMAL))
+            {
+                // Safe fall, fall height reduction
+                int32 safe_fall = player->GetTotalAuraModifier(SPELL_AURA_SAFE_FALL);
+
+                float damageperc = 0.018f * (z_diff - safe_fall) - 0.2426f;
+                damageperc = GetFallDamage(player, z_diff - safe_fall, damageperc);
+                if (damageperc > 0)
+                {
+                    uint32 damage = (uint32)(damageperc * player->GetMaxHealth() * sWorld.getConfig(CONFIG_FLOAT_RATE_DAMAGE_FALL));
+
+                    float height = position.z;
+                    player->UpdateAllowedPositionZ(position.x, position.y, height);
+
+                    if (damage > 0)
+                    {
+                        // Prevent fall damage from being more than the player maximum health
+                        if (damage > player->GetMaxHealth())
+                        {
+                            damage = player->GetMaxHealth();
+                        }
+
+                        // Gust of Wind
+                        if (player->GetDummyAura(43621))
+                        {
+                            damage = player->GetMaxHealth() / 2;
+                        }
+
+                        player->EnvironmentalDamage(DAMAGE_FALL, damage);
+                    }
+
+                    // Z given by moveinfo, LastZ, FallTime, WaterZ, MapZ, Damage, Safefall reduction
+                    DEBUG_LOG("FALLDAMAGE z=%f sz=%f pZ=%f FallTime=%d mZ=%f damage=%d SF=%d", position.z, height, player->GetPositionZ(), movementInfo.GetFallTime(), height, damage, safe_fall);
+                }
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void ImmersiveModule::OnResurrect(Player* player)
+{
+    if (!GetConfig()->enabled || !player)
         return;
 
 #ifdef ENABLE_PLAYERBOTS
-    // Don't use custom stats on random bots
-    if (!player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player))
+    // Don't lose stats on bots
+    if (!player->isRealPlayer())
         return;
 #endif
 
-    PlayerInfo const* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
-    *info = playerInfo->levelInfo[0];
+    // Don't lose stats on max level
+    if (IsMaxLevel(player))
+        return;
 
-    uint32 owner = player->GetObjectGuid().GetRawValue();
-    int modifier = GetModifierValue(owner);
-    for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
+    // Don't get lose stats on battlegrounds
+    if (player->InBattleGround())
+        return;
+
+#if EXPANSION > 0
+    // Don't lose stats on arenas
+    if (player->InArena())
+        return;
+#endif
+
+    const uint8 lossPerDeath = GetConfig()->attributeLossPerDeath;
+    const uint32 usedStats = GetUsedStats(player);
+    if (lossPerDeath > 0 && usedStats > 0)
     {
-        info->stats[i] += GetStatsValue(owner, (Stats)i) * modifier / 100;
+        std::map<Stats, int> loss;
+        for (uint8 j = STAT_STRENGTH; j < MAX_STATS; ++j)
+        {
+            loss[(Stats)j] = 0;
+        }
+
+        const uint32 owner = player->GetObjectGuid().GetRawValue();
+        uint32 pointsToLose = lossPerDeath > usedStats ? usedStats : lossPerDeath;
+        while (pointsToLose > 0)
+        {
+            const Stats statType = (Stats)urand(STAT_STRENGTH, MAX_STATS - 1);
+            const uint32 statValue = GetStatsValue(owner, statType);
+            if (statValue > 0)
+            {
+                SetStatsValue(owner, statType, statValue - 1);
+                loss[statType]++;
+                pointsToLose--;
+            }
+        }
+
+        std::ostringstream out;
+        bool first = true;
+        for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
+        {
+            const uint32 value = loss[(Stats)i];
+            if (value > 0)
+            {
+                if (!first) out << ", "; else first = false;
+                const uint32 langStat = LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + i;
+                out << "|cffffa0a0-" << value << "|cffffff00 " << sObjectMgr.GetMangosString(langStat, player->GetSession()->GetSessionDbLocaleIndex());
+            }
+        }
+
+        SendSysMessage(player, FormatString(
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_LOST, player->GetSession()->GetSessionDbLocaleIndex()),
+            out.str().c_str()));
+
+        player->InitStatsForLevel(true);
+        player->UpdateAllStats();
     }
 }
 
-void ImmersiveModule::OnPlayerGossipSelect(Player *player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData *menuData)
+void ImmersiveModule::OnGiveXP(Player* player, uint32 xp, Creature* victim)
 {
+#ifdef ENABLE_PLAYERBOTS
+    if (!GetConfig()->enabled)
+        return;
+
+    if (!player->GetPlayerbotMgr())
+        return;
+
+    if (GetConfig()->sharedXpPercent < 0.01f)
+        return;
+
+    uint32 bonus_xp = xp + (victim ? player->GetXPRestBonus(xp) : 0);
+    uint32 botXp = (uint32)(bonus_xp * GetConfig()->sharedXpPercent / 100.0f);
+    if (botXp < 1)
+    {
+        return;
+    }
+
+    OnGiveXPAction action(botXp, GetConfig());
+    RunAction(player, &action);
+#endif
+}
+
+void ImmersiveModule::OnGiveLevel(Player* player, uint32 level)
+{
+    if (!GetConfig()->enabled)
+        return;
+
+    if (!GetConfig()->manualAttributes)
+        return;
+
+#ifdef ENABLE_PLAYERBOTS
+    if (!player->isRealPlayer())
+        return;
+#endif
+
+    const uint32 usedStats = GetUsedStats(player);
+    const uint32 totalStats = GetTotalStats(player);
+    const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
+    if (availablePoints > 0)
+    {
+        SendSysMessage(player, FormatString(
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
+            availablePoints));
+    }
+}
+
+void ImmersiveModule::OnModifyMoney(Player* player, int32 diff)
+{
+#ifdef ENABLE_PLAYERBOTS
+    if (!GetConfig()->enabled)
+        return;
+
+    if (!player->GetPlayerbotMgr())
+        return;
+
+    if (diff < 1)
+        return;
+
+    if (GetConfig()->sharedMoneyPercent < 0.01f)
+        return;
+
+    int32 botMoney = (int32)(diff * GetConfig()->sharedMoneyPercent / 100.0f);
+    if (botMoney < 1) return;
+
+    OnGiveMoneyAction action(botMoney, GetConfig());
+    RunAction(player, &action);
+#endif
+}
+
+void ImmersiveModule::OnSetReputation(Player* player, FactionEntry const* factionEntry, int32 standing, bool incremental)
+{
+#ifdef ENABLE_PLAYERBOTS
+    if (!GetConfig()->enabled)
+        return;
+
+    if (!player->GetPlayerbotMgr())
+        return;
+
+    if (!incremental)
+        return;
+
+    if (GetConfig()->sharedRepPercent < 0.01f)
+        return;
+
+    int32 value = (uint32)(standing * GetConfig()->sharedRepPercent / 100.0f);
+    if (value < 1) return;
+
+    OnReputationChangeAction action(factionEntry, value, GetConfig());
+    RunAction(player, &action);
+#endif
+}
+
+void ImmersiveModule::OnRewardQuest(Player* player, const Quest* quest)
+{
+#ifdef ENABLE_PLAYERBOTS
+    if (!GetConfig()->enabled)
+        return;
+
+    if (!player->GetPlayerbotMgr())
+        return;
+
+    if (!GetConfig()->sharedQuests)
+        return;
+
+    if (!quest || quest->IsRepeatable())
+        return;
+
+    OnRewardQuestAction action(quest, GetConfig());
+    RunAction(player, &action);
+#endif
+}
+
+bool ImmersiveModule::OnPrepareGossipMenu(Player* player, WorldObject* source, const GossipMenuItems& gossipMenu)
+{
+    return gossipMenu.option_id == GOSSIP_OPTION_IMMERSIVE;
+}
+
+bool ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
+{
+#if EXPANSION == 1
+    if (player && creature)
+    {
+        GossipMenu& menu = player->GetPlayerMenu()->GetGossipMenu();
+        uint32 textId = player->GetGossipTextId(menu.GetMenuId(), creature);
+        GossipText const* text = sObjectMgr.GetGossipText(textId);
+        if (text)
+        {
+            for (int i = 0; i < MAX_GOSSIP_TEXT_OPTIONS; i++)
+            {
+                std::string text0 = text->Options[i].Text_0;
+                if (!text0.empty()) creature->MonsterSay(text0.c_str(), 0, player);
+                std::string text1 = text->Options[i].Text_1;
+                if (!text1.empty() && text0 != text1) creature->MonsterSay(text1.c_str(), 0, player);
+            }
+        }
+    }
+#endif
+
+    return false;
+}
+
+bool ImmersiveModule::OnGossipSelect(Player* player, Unit* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId)
+{
+    GossipMenu& gossipMenu = player->GetPlayerMenu()->GetGossipMenu();
+    uint32 gossipOptionId = gossipMenu.GetItem(gossipListId).m_gOptionId;
     if (gossipOptionId == GOSSIP_OPTION_IMMERSIVE)
     {
+        const GossipMenuItemData* menuData = gossipMenu.GetItemData(gossipListId);
         bool closeGossipWindow = false;
-        if (!sImmersiveConfig.enabled)
+        if (!GetConfig()->enabled)
         {
             SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
             closeGossipWindow = true;
@@ -187,15 +460,397 @@ void ImmersiveModule::OnPlayerGossipSelect(Player *player, WorldObject* source, 
         }
         else
         {
-            player->PrepareGossipMenu(source, 60001);
-            player->SendPreparedGossip(source);
+            player->PrepareGossipMenu(creature, 60001);
+            player->SendPreparedGossip(creature);
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+void ImmersiveModule::OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info)
+{
+    if (!GetConfig()->enabled)
+        return;
+
+    if (!GetConfig()->manualAttributes)
+        return;
+
+#ifdef ENABLE_PLAYERBOTS
+    // Don't use custom stats on random bots
+    if (!player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player))
+        return;
+#endif
+
+    const PlayerInfo* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
+    info = playerInfo->levelInfo[0];
+
+    uint32 owner = player->GetObjectGuid().GetRawValue();
+    int modifier = GetModifierValue(owner);
+    for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
+    {
+        info.stats[i] += GetStatsValue(owner, (Stats)i) * modifier / 100;
+    }
+}
+
+bool ImmersiveModule::OnRespawn(Creature* creature)
+{
+    if (GetConfig()->enabled && GetConfig()->disableInstanceRespawn)
+    {
+        // Disable instance creatures respawn 
+        if (creature)
+        {
+            // Ignore manual respawns
+            if (!creature->IsManualRespawnScheduled())
+            {
+                Map* map = creature->GetMap();
+                if (map && !map->IsBattleGround() && (map->IsDungeon() || map->IsRaid()))
+                {
+                    // Prevent respawning logic
+                    return true;
+                }
+            }
         }
     }
+
+    return false;
+}
+
+bool ImmersiveModule::OnUseFishingNode(GameObject* gameObject, Player* player)
+{
+    if (GetConfig()->enabled && GetConfig()->fishingBaubles)
+    {
+        if (gameObject && player)
+        {
+            if (gameObject->GetLootState() == GO_READY)
+            {
+                // 1) skill must be >= base_zone_skill
+                // 2) if skill == base_zone_skill => 5% chance
+                // 3) chance is linear dependence from (base_zone_skill-skill)
+
+                uint32 zone, subzone;
+                gameObject->GetZoneAndAreaId(zone, subzone);
+
+                int32 zone_skill = sObjectMgr.GetFishingBaseSkillLevel(subzone);
+                if (!zone_skill)
+                {
+                    zone_skill = sObjectMgr.GetFishingBaseSkillLevel(zone);
+                }
+
+                // provide error, no fishable zone or area should be 0
+                if (!zone_skill)
+                {
+                    sLog.outErrorDb("Fishable areaId %u are not properly defined in `skill_fishing_base_level`.", subzone);
+                }
+
+                int32 skill = player->GetSkillValue(SKILL_FISHING);
+                int32 chance = skill - zone_skill + 5;
+                int32 roll = irand(1, 100);
+
+                DEBUG_LOG("Fishing check (skill: %i zone min skill: %i chance %i roll: %i", skill, zone_skill, chance, roll);
+
+                // normal chance
+                bool success = skill >= zone_skill && chance >= roll;
+                if (success)
+                {
+                    // Check for fishing bauble
+                    success = HasFishingBauble(player);
+                }
+
+                GameObject* fishingHole = nullptr;
+
+                // overwrite fail in case fishhole if allowed (after 3.3.0)
+                if (!success)
+                {
+                    if (!sWorld.getConfig(CONFIG_BOOL_SKILL_FAIL_POSSIBLE_FISHINGPOOL))
+                    {
+                        // TODO: find reasonable value for fishing hole search
+                        fishingHole = gameObject->LookupFishingHoleAround(20.0f + CONTACT_DISTANCE);
+                        if (fishingHole)
+                        {
+                            success = true;
+                        }
+                    }
+                }
+                // just search fishhole for success case
+                else
+                {
+                    // TODO: find reasonable value for fishing hole search
+                    fishingHole = gameObject->LookupFishingHoleAround(20.0f + CONTACT_DISTANCE);
+                }
+
+                player->UpdateFishingSkill();
+
+                // fish catch or fail and junk allowed (after 3.1.0)
+                if (success || sWorld.getConfig(CONFIG_BOOL_SKILL_FAIL_LOOT_FISHING))
+                {
+                    // prevent removing GO at spell cancel
+                    player->RemoveGameObject(gameObject, false);
+                    gameObject->SetOwnerGuid(player->GetObjectGuid());
+
+                    if (fishingHole)                    // will set at success only
+                    {
+                        fishingHole->Use(player);
+                        gameObject->SetLootState(GO_JUST_DEACTIVATED);
+                    }
+                    else
+                    {
+                        delete gameObject->m_loot;
+                        gameObject->m_loot = new Loot(player, gameObject, success ? LOOT_FISHING : LOOT_FISHING_FAIL);
+                        gameObject->m_loot->ShowContentTo(player);
+                    }
+                }
+                else
+                {
+                    // fish escaped, can be deleted now
+                    gameObject->SetLootState(GO_JUST_DEACTIVATED);
+
+                    WorldPacket data(SMSG_FISH_ESCAPED, 0);
+                    player->GetSession()->SendPacket(data);
+                }
+                
+
+                player->FinishSpell(CURRENT_CHANNELED_SPELL);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool ImmersiveModule::OnCalculateEffectiveBlockChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float &outChance)
+{
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (unit)
+        {
+            outChance = 0.0f;
+            outChance += unit->GetBlockChance();
+            // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
+            if (outChance < 0.005f)
+            {
+                outChance = 0.0f;
+                return true;
+            }
+
+            const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
+
+            // Skill difference can be negative (and reduce our chance to mitigate an attack), which means:
+            // a) Attacker's level is higher
+            // b) Attacker has +skill bonuses
+            const bool isPlayerOrPet = unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            const uint32 skill = (weapon ? attacker->GetWeaponSkillValue((WeaponAttackType)attType, unit) : attacker->GetSkillMaxForLevel(unit));
+            int32 difference = int32(unit->GetDefenseSkillValue(attacker) - skill);
+            difference = CalculateEffectiveChance(difference, attacker, unit, IMMERSIVE_EFFECTIVE_CHANCE_BLOCK);
+
+            // Defense/weapon skill factor: for players and NPCs
+            float factor = 0.04f;
+            // NPCs cannot gain bonus block chance based on positive skill difference
+            if (!isPlayerOrPet && difference > 0)
+                factor = 0.0f;
+
+            outChance += (difference * factor);
+            outChance = std::max(0.0f, std::min(outChance, 100.0f));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ImmersiveModule::OnCalculateEffectiveParryChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float& outChance)
+{
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (unit)
+        {
+            outChance = 0.0f;
+            if (attType == RANGED_ATTACK)
+            {
+                return true;
+            }
+
+            outChance += unit->GetParryChance();
+            // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
+            if (outChance < 0.005f)
+            {
+                outChance = 0.0f;
+                return true;
+            }
+
+            const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
+
+            // Skill difference can be negative (and reduce our chance to mitigate an attack), which means:
+            // a) Attacker's level is higher
+            // b) Attacker has +skill bonuses
+            const bool isPlayerOrPet = unit->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            const uint32 skill = (weapon ? attacker->GetWeaponSkillValue((WeaponAttackType)attType, unit) : attacker->GetSkillMaxForLevel(unit));
+            int32 difference = int32(unit->GetDefenseSkillValue(attacker) - skill);
+            difference = CalculateEffectiveChance(difference, attacker, unit, IMMERSIVE_EFFECTIVE_CHANCE_PARRY);
+
+            // Defense/weapon skill factor: for players and NPCs
+            float factor = 0.04f;
+            // NPCs gain additional bonus parry chance based on positive skill difference (same value as bonus miss rate)
+            if (!isPlayerOrPet && difference > 0)
+            {
+                if (difference > 10)
+                    factor = 0.6f; // Pre-WotLK: 0.2 additional factor for each level above 2
+                else
+                    factor = 0.1f;
+            }
+
+            outChance += (difference * factor);
+            outChance = std::max(0.0f, std::min(outChance, 100.0f));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ImmersiveModule::OnCalculateEffectiveCritChance(const Unit* unit, const Unit* victim, uint8 attType, const SpellEntry* ability, float& outChance)
+{
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (unit)
+        {
+            outChance = 0.0f;
+            outChance += (ability ? unit->GetCritChance(ability, SPELL_SCHOOL_MASK_NORMAL) : unit->GetCritChance((WeaponAttackType)attType));
+            
+            // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
+            if (outChance < 0.005f)
+            {
+                outChance = 0.0f;
+                return true;
+            }
+
+            // Skip victim calculation if positive ability
+            if (ability && IsPositiveSpell(ability, unit, victim))
+            {
+                outChance = std::max(0.0f, std::min(outChance, 100.0f));
+                return true;
+            }
+
+            const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
+            // Skill difference can be both negative and positive.
+            // a) Positive means that attacker's level is higher or additional weapon +skill bonuses
+            // b) Negative means that victim's level is higher or additional +defense bonuses
+            const bool vsPlayerOrPet = victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            const bool ranged = (attType == RANGED_ATTACK);
+            // weapon skill does not benefit crit% vs NPCs
+            const uint32 skill = (weapon && !vsPlayerOrPet ? unit->GetWeaponSkillValue((WeaponAttackType)attType, victim) : unit->GetSkillMaxForLevel(victim));
+            int32 difference = int32(skill - victim->GetDefenseSkillValue(unit));
+            difference = CalculateEffectiveChance(difference, unit, victim, IMMERSIVE_EFFECTIVE_CHANCE_CRIT);
+
+            // Weapon skill factor: for players and NPCs
+            float factor = 0.04f;
+            // Crit suppression against NPCs with higher level
+            if (!vsPlayerOrPet) // decrease by 1% of crit per level of target
+                factor = 0.2f;
+
+            outChance += (difference * factor);
+
+            // Victim's crit taken chance
+            const SpellDmgClass dmgClass = (ranged ? SPELL_DAMAGE_CLASS_RANGED : SPELL_DAMAGE_CLASS_MELEE);
+            outChance += victim->GetCritTakenChance(SPELL_SCHOOL_MASK_NORMAL, dmgClass);
+            for (auto i : unit->GetScriptedLocationAuras(SCRIPT_LOCATION_CRIT_CHANCE))
+            {
+                if (!i->isAffectedOnSpell(ability))
+                    continue;
+
+                i->OnCritChanceCalculate(victim, outChance, ability);
+            }
+
+            outChance = std::max(0.0f, std::min(outChance, 100.0f));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ImmersiveModule::OnCalculateEffectiveMissChance(const Unit* unit, const Unit* victim, uint8 attType, const SpellEntry* ability, const Spell* const* currentSpells, const SpellPartialResistDistribution& spellPartialResistDistribution, float& outChance)
+{
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (unit)
+        {
+            outChance = 0.0f;
+            outChance += (ability ? victim->GetMissChance(ability, SPELL_SCHOOL_MASK_NORMAL) : victim->GetMissChance((WeaponAttackType)attType));
+            
+            // Victim's own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit can't be missed
+            if (outChance < 0.005f)
+            {
+                outChance = 0.0f;
+                return true;
+            }
+
+            const bool ranged = (attType == RANGED_ATTACK);
+            const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
+            // Check if dual wielding, add additional miss penalty - when mainhand has on next swing spellInfo, offhand doesnt suffer penalty
+            if (!ability && !ranged && unit->hasOffhandWeaponForAttack() && (!currentSpells[CURRENT_MELEE_SPELL] || !IsNextMeleeSwingSpell(currentSpells[CURRENT_MELEE_SPELL]->m_spellInfo)))
+                outChance += 19.0f;
+
+            // Skill difference can be both negative and positive. Positive difference means that:
+            // a) Victim's level is higher
+            // b) Victim has additional defense skill bonuses
+            const bool vsPlayerOrPet = victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+            const uint32 skill = (weapon ? unit->GetWeaponSkillValue((WeaponAttackType)attType, victim) : unit->GetSkillMaxForLevel(victim));
+            int32 difference = int32(victim->GetDefenseSkillValue(unit) - skill);
+            difference = CalculateEffectiveChance(difference, unit, victim, IMMERSIVE_EFFECTIVE_CHANCE_MISS);
+
+            // Defense/weapon skill factor: for players and NPCs
+            float factor = 0.04f;
+            // NPCs gain additional bonus to incoming hit chance reduction based on positive skill difference (same value as bonus parry rate)
+            if (!vsPlayerOrPet && difference > 0)
+            {
+                if (difference > 10)
+                {
+                    // First 10 points of difference (2 levels): usual decrease
+                    outChance += (10 * 0.1f);
+                    difference -= 10;
+                    // Each additional point of difference:
+                    factor = 0.4f;
+                    outChance += (difference * 0.2f); // Pre-WotLK: Additional 1% miss chance for each level (final @ 3% per level)
+                }
+                else
+                    factor = 0.1f;
+            }
+
+            outChance += (difference * factor);
+            // Victim's auras affecting attacker's hit contribution:
+            outChance -= victim->GetTotalAuraModifier(ranged ? SPELL_AURA_MOD_ATTACKER_RANGED_HIT_CHANCE : SPELL_AURA_MOD_ATTACKER_MELEE_HIT_CHANCE);
+            // For elemental melee auto-attacks: full resist outcome converted into miss chance (original research on combat logs)
+            if (!ranged && !ability)
+            {
+                const float percent = victim->CalculateEffectiveMagicResistancePercent(unit, unit->GetMeleeDamageSchoolMask((attType == BASE_ATTACK), true));
+                if (percent > 0)
+                {
+                    if (const uint32 uindex = uint32(percent * 100))
+                    {
+                        const SpellPartialResistChanceEntry& chances = spellPartialResistDistribution.at(uindex);
+                        outChance += float(chances.at(SPELL_PARTIAL_RESIST_PCT_100) / 100);
+                    }
+                }
+            }
+
+            // Finally, take hit chance
+            outChance -= (ability ? unit->GetHitChance(ability, SPELL_SCHOOL_MASK_NORMAL) : unit->GetHitChance((WeaponAttackType)attType));
+            float minimum = (ability && ability->DmgClass == SPELL_DAMAGE_CLASS_MAGIC) || difference > 10 ? 1.f : 0;
+            outChance = std::max(minimum, std::min(outChance, 100.0f));
+            return true;
+        }
+    }
+
+    return false;
 }
 
 float ImmersiveModule::GetFallDamage(Player* player, float zdist, float defaultVal)
 {
-    if (!sImmersiveConfig.enabled || !player)
+    if (!GetConfig()->enabled || !player)
         return defaultVal;
 
     // Don't get extra fall damage on battlegrounds
@@ -214,90 +869,102 @@ float ImmersiveModule::GetFallDamage(Player* player, float zdist, float defaultV
         return defaultVal;
 #endif
 
-    return 0.0055f * zdist * zdist * sImmersiveConfig.fallDamageMultiplier;
+    return 0.0055f * zdist * zdist * GetConfig()->fallDamageMultiplier;
 }
 
-void ImmersiveModule::OnPlayerResurrect(Player *player)
+bool ImmersiveModule::HasFishingBauble(Player* player)
 {
-    if (!sImmersiveConfig.enabled || !player)
-        return;
+    Item* const item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
+    if (!item)
+        return false;
 
-#ifdef ENABLE_PLAYERBOTS
-    // Don't lose stats on bots
-    if (!player->isRealPlayer())
-        return;
-#endif
+    uint32 eId = item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT);
+    uint32 eDuration = item->GetEnchantmentDuration(TEMP_ENCHANTMENT_SLOT);
+    if (!eDuration)
+        return false;
 
-    // Don't get extra fall damage on battlegrounds
-    if (player->InBattleGround())
-        return;
+    SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(eId);
+    if (!pEnchant)
+        return false;
 
-#if EXPANSION > 0
-    // Don't get extra fall damage on arenas
-    if (player->InArena())
-        return;
-#endif
-
-    const uint8 lossPerDeath = sImmersiveConfig.attributeLossPerDeath;
-    const uint32 usedStats = GetUsedStats(player);
-    if(lossPerDeath > 0 && usedStats > 0)
+    for (int s = 0; s < 3; ++s)
     {
-        std::map<Stats, int> loss;
-        for (uint8 j = STAT_STRENGTH; j < MAX_STATS; ++j)
+        uint32 spellId = pEnchant->spellid[s];
+        if (pEnchant->type[s] == ITEM_ENCHANTMENT_TYPE_EQUIP_SPELL && spellId)
         {
-            loss[(Stats)j] = 0;
-        }
-
-        const uint32 owner = player->GetObjectGuid().GetRawValue();
-        uint32 pointsToLose = lossPerDeath > usedStats ? usedStats : lossPerDeath;
-        while (pointsToLose > 0)
-        {
-            const Stats statType = (Stats)urand(STAT_STRENGTH, MAX_STATS - 1);
-            const uint32 statValue = GetStatsValue(owner, statType);
-            if(statValue > 0)
+            SpellEntry const* entry = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
+            if (entry)
             {
-                SetStatsValue(owner, statType, statValue - 1);
-                loss[statType]++;
-                pointsToLose--;
+                for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
+                {
+                    if (entry->Effect[i] == SPELL_EFFECT_APPLY_AURA && entry->EffectMiscValue[i] == SKILL_FISHING)
+                        return true;
+                }
             }
         }
-
-        std::ostringstream out;
-        bool first = true;
-        for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
-        {
-            const uint32 value = loss[(Stats)i];
-            if(value > 0)
-            {
-                if (!first) out << ", "; else first = false;
-                const uint32 langStat = LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + i;
-                out << "|cffffa0a0-" << value << "|cffffff00 " << sObjectMgr.GetMangosString(langStat, player->GetSession()->GetSessionDbLocaleIndex());
-            }
-        }
-
-        SendSysMessage(player, FormatString(
-                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_LOST, player->GetSession()->GetSessionDbLocaleIndex()),
-                    out.str().c_str()));
-
-        player->InitStatsForLevel(true);
-        player->UpdateAllStats();
     }
+
+    return false;
 }
 
-std::string percent(Player *player)
+void ImmersiveModule::DisableOfflineRespawn()
 {
-#ifdef ENABLE_PLAYERBOTS
-    return player->GetPlayerbotAI() ? "%" : "%%";
-#else
-    return "%%";
+    uint32 lastPing = GetStatsValue(0, "last_ping");
+    if (!lastPing) return;
+
+    uint32 offlineTime = sWorld.GetGameTime() - lastPing;
+    sLog.outString("Prolonging respawn time: +%u sec", offlineTime);
+
+    CharacterDatabase.BeginTransaction();
+
+    CharacterDatabase.DirectPExecute("update `creature_respawn` set `respawntime` = `respawntime` + '%u'", offlineTime);
+    CharacterDatabase.DirectPExecute("update `instance_reset` set `resettime` = `resettime` + '%u'", offlineTime);
+    CharacterDatabase.DirectPExecute("update `instance` set `resettime` = `resettime` + '%u'", offlineTime);
+    CharacterDatabase.DirectPExecute("update `gameobject_respawn` set `respawntime` = `respawntime` + '%u'", offlineTime);
+    SetStatsValue(0, "last_ping", sWorld.GetGameTime());
+
+    CharacterDatabase.CommitTransaction();
+}
+
+PlayerInfo extraPlayerInfo[MAX_RACES][MAX_CLASSES];
+
+const PlayerInfo* ImmersiveModule::GetPlayerInfo(uint32 race, uint32 class_)
+{
+#if EXPANSION > 0
+    if (class_ == CLASS_SHAMAN && race == RACE_NIGHTELF)
+    {
+        PlayerInfo const* piSh = sObjectMgr.GetPlayerInfo(RACE_DRAENEI, class_);
+        PlayerInfo *result = &extraPlayerInfo[race][class_];
+        memcpy(result, piSh, sizeof(PlayerInfo));
+
+        PlayerInfo const* piDr = sObjectMgr.GetPlayerInfo(race, CLASS_DRUID);
+        result->displayId_f = piDr->displayId_f;
+        result->displayId_m = piDr->displayId_m;
+
+        return result;
+    }
 #endif
+
+    if (class_ == CLASS_DRUID && race == RACE_TROLL)
+    {
+        PlayerInfo const* piSh = sObjectMgr.GetPlayerInfo(RACE_TAUREN, class_);
+        PlayerInfo *result = &extraPlayerInfo[race][class_];
+        memcpy(result, piSh, sizeof(PlayerInfo));
+
+        PlayerInfo const* piDr = sObjectMgr.GetPlayerInfo(race, CLASS_SHAMAN);
+        result->displayId_f = piDr->displayId_f;
+        result->displayId_m = piDr->displayId_m;
+        return result;
+    }
+
+    return sObjectMgr.GetPlayerInfo(race, class_);
 }
 
 void ImmersiveModule::PrintHelp(Player *player, bool detailed, bool help)
 {
     uint32 usedStats = GetUsedStats(player);
     uint32 totalStats = GetTotalStats(player);
-    uint32 purchaseCost = GetStatCost(player) * sImmersiveConfig.manualAttributesIncrease;
+    uint32 purchaseCost = GetStatCost(player) * GetConfig()->manualAttributesIncrease;
 
     SendSysMessage(player, FormatString(
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AVAILABLE, player->GetSession()->GetSessionDbLocaleIndex()),
@@ -361,7 +1028,7 @@ void ImmersiveModule::PrintSuggestedStats(Player* player)
     for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
     {
         uint32 value = levelCInfo.stats[i];
-        value = (uint32)floor(value * sImmersiveConfig.manualAttributesPercent / 100.0f);
+        value = (uint32)floor(value * GetConfig()->manualAttributesPercent / 100.0f);
         if (!value) continue;
         if (!first) out << ", "; else first = false;
         const uint32 langStat = LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + i;
@@ -379,7 +1046,7 @@ void ImmersiveModule::PrintSuggestedStats(Player* player)
 
 void ImmersiveModule::ChangeModifier(Player *player, uint32 type)
 {
-    if (!sImmersiveConfig.enabled) 
+    if (!GetConfig()->enabled) 
         return;
 
     uint32 owner = player->GetObjectGuid().GetRawValue();
@@ -402,7 +1069,7 @@ void ImmersiveModule::ChangeModifier(Player *player, uint32 type)
 
 void ImmersiveModule::IncreaseStat(Player *player, uint32 type)
 {
-    if (!sImmersiveConfig.enabled)
+    if (!GetConfig()->enabled)
     {
         SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
@@ -413,7 +1080,7 @@ void ImmersiveModule::IncreaseStat(Player *player, uint32 type)
     uint32 totalStats = GetTotalStats(player);
     uint32 cost = GetStatCost(player);
     uint32 attributePointsAvailable = (totalStats > usedStats ? totalStats - usedStats : 0);
-    uint32 statIncrease = std::min(sImmersiveConfig.manualAttributesIncrease, attributePointsAvailable);
+    uint32 statIncrease = std::min(GetConfig()->manualAttributesIncrease, attributePointsAvailable);
     uint32 purchaseCost = cost * statIncrease;
 
     if (usedStats >= totalStats)
@@ -452,7 +1119,7 @@ void ImmersiveModule::IncreaseStat(Player *player, uint32 type)
 
 void ImmersiveModule::ResetStats(Player *player)
 {
-    if (!sImmersiveConfig.enabled)
+    if (!GetConfig()->enabled)
     {
         SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
         return;
@@ -484,7 +1151,7 @@ uint32 ImmersiveModule::GetTotalStats(Player *player, uint8 level)
         level = player->GetLevel();
     }
 
-    const uint32 maxStats = sImmersiveConfig.manualAttributesMaxPoints;
+    const uint32 maxStats = GetConfig()->manualAttributesMaxPoints;
     if(maxStats > 0)
     {
         // Calculate the amount of base stats
@@ -515,8 +1182,8 @@ uint32 ImmersiveModule::GetTotalStats(Player *player, uint8 level)
             total += 5;
         }
 
-        uint32 byPercent = (uint32)floor(total * sImmersiveConfig.manualAttributesPercent / 100.0f);
-        return byPercent / sImmersiveConfig.manualAttributesIncrease * sImmersiveConfig.manualAttributesIncrease;
+        uint32 byPercent = (uint32)floor(total * GetConfig()->manualAttributesPercent / 100.0f);
+        return byPercent / GetConfig()->manualAttributesIncrease * GetConfig()->manualAttributesIncrease;
     }
 }
 
@@ -549,7 +1216,7 @@ uint32 ImmersiveModule::GetStatCost(Player *player, uint8 level, uint32 usedStat
         }
     }
 
-    return sImmersiveConfig.manualAttributesCostMult * (usedLevels * usedLevels + 1);
+    return GetConfig()->manualAttributesCostMult * (usedLevels * usedLevels + 1);
 }
 
 uint32 ImmersiveModule::GetStatsValue(uint32 owner, const std::string& type)
@@ -616,16 +1283,6 @@ void ImmersiveModule::SendSysMessage(Player *player, const std::string& message)
     ChatHandler(player).PSendSysMessage(message.c_str());
 }
 
-std::string ImmersiveModule::FormatString(const char* format, ...)
-{
-    va_list ap;
-    char out[2048];
-    va_start(ap, format);
-    vsnprintf(out, 2048, format, ap);
-    va_end(ap);
-    return std::string(out);
-}
-
 bool ImmersiveAction::CheckSharedPercentReqs(Player* player, Player* bot)
 {
     Group *group = player->GetGroup();
@@ -653,9 +1310,9 @@ bool PlayerIsAlliance(Player* player)
 
 bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
 {
-    if (!sImmersiveConfig.enabled) return false;
+    if (!config->enabled) return false;
 
-    if (sImmersiveConfig.sharedPercentMinLevel && (int)player->GetLevel() < sImmersiveConfig.sharedPercentMinLevel)
+    if (config->sharedPercentMinLevel && (int)player->GetLevel() < config->sharedPercentMinLevel)
         return false;
 
     uint8 race1 = player->getRace();
@@ -663,13 +1320,13 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
     uint8 race2 = bot->getRace();
     uint8 cls2 = bot->getClass();
 
-    if (sImmersiveConfig.sharedPercentGuildRestiction && player->GetGuildId() != bot->GetGuildId())
+    if (config->sharedPercentGuildRestiction && player->GetGuildId() != bot->GetGuildId())
         return false;
 
-    if (sImmersiveConfig.sharedPercentFactionRestiction && (PlayerIsAlliance(player) ^ PlayerIsAlliance(bot)))
+    if (config->sharedPercentFactionRestiction && (PlayerIsAlliance(player) ^ PlayerIsAlliance(bot)))
         return false;
 
-    if (sImmersiveConfig.sharedPercentRaceRestiction == 2)
+    if (config->sharedPercentRaceRestiction == 2)
     {
         if (race1 == RACE_TROLL) race1 = RACE_ORC;
         if (race1 == RACE_DWARF) race1 = RACE_GNOME;
@@ -678,7 +1335,7 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
         if (race2 == RACE_DWARF) race2 = RACE_GNOME;
     }
 
-    if (sImmersiveConfig.sharedPercentClassRestiction == 2)
+    if (config->sharedPercentClassRestiction == 2)
     {
         if (cls1 == CLASS_PALADIN || cls1 == CLASS_SHAMAN) cls1 = CLASS_WARRIOR;
         if (cls1 == CLASS_HUNTER || cls1 == CLASS_ROGUE) cls1 = CLASS_DRUID;
@@ -689,10 +1346,10 @@ bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
         if (cls2 == CLASS_PRIEST || cls2 == CLASS_WARLOCK) cls2 = CLASS_MAGE;
     }
 
-    if (sImmersiveConfig.sharedPercentRaceRestiction && race1 != race2)
+    if (config->sharedPercentRaceRestiction && race1 != race2)
         return false;
 
-    if (sImmersiveConfig.sharedPercentClassRestiction && cls1 != cls2)
+    if (config->sharedPercentClassRestiction && cls1 != cls2)
         return false;
 
     return true;
@@ -721,10 +1378,10 @@ void ImmersiveModule::RunAction(Player* player, ImmersiveAction* action)
     SendSysMessage(player, out.str());
 }
 
-uint32 ApplyRandomPercent(uint32 value)
+uint32 ApplyRandomPercent(uint32 value, ImmersiveModuleConfig* config)
 {
-    if (!sImmersiveConfig.enabled || !sImmersiveConfig.sharedRandomPercent) return value;
-    float percent = (float) urand(0, sImmersiveConfig.sharedRandomPercent) - (float)sImmersiveConfig.sharedRandomPercent / 2;
+    if (!config->enabled || !config->sharedRandomPercent) return value;
+    float percent = (float) urand(0, config->sharedRandomPercent) - (float)config->sharedRandomPercent / 2;
     return value + (uint32) (value * percent / 100.0f);
 }
 
@@ -732,11 +1389,11 @@ uint32 ApplyRandomPercent(uint32 value)
 class OnGiveXPAction : public ImmersiveAction
 {
 public:
-    OnGiveXPAction(int32 value) : ImmersiveAction(), value(value) {}
+    OnGiveXPAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
 
     bool Run(Player* player, Player* bot) override
     {
-        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)sImmersiveConfig.sharedXpPercentLevelDiff)
+        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)config->sharedXpPercentLevelDiff)
         {
             return false;
         }
@@ -746,12 +1403,12 @@ public:
             return false;
         }
 
-        bot->GiveXP(ApplyRandomPercent(value), NULL);
+        bot->GiveXP(ApplyRandomPercent(value, config), NULL);
 
         Pet *pet = bot->GetPet();
         if (pet && pet->getPetType() == HUNTER_PET)
         {
-            pet->GivePetXP(ApplyRandomPercent(value));
+            pet->GivePetXP(ApplyRandomPercent(value, config));
         }
 
         return true;
@@ -759,9 +1416,11 @@ public:
 
     std::string GetActionMessage(Player* player) override
     {
-        return ImmersiveModule::FormatString(
-               sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-               value);
+        return FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
+            value
+        );
     }
 
 private:
@@ -769,75 +1428,27 @@ private:
 };
 #endif
 
-void ImmersiveModule::OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim)
-{
-#ifdef ENABLE_PLAYERBOTS
-    if (!sImmersiveConfig.enabled) 
-        return;
-
-    if (!player->GetPlayerbotMgr())
-        return;
-
-    if (sImmersiveConfig.sharedXpPercent < 0.01f) 
-        return;
-
-    uint32 bonus_xp = xp + (victim ? player->GetXPRestBonus(xp) : 0);
-    uint32 botXp = (uint32) (bonus_xp * sImmersiveConfig.sharedXpPercent / 100.0f);
-    if (botXp < 1) 
-    {
-        return;
-    }
-
-    OnGiveXPAction action(botXp);
-    RunAction(player, &action);
-#endif
-}
-
-void ImmersiveModule::OnPlayerGiveLevel(Player* player)
-{
-    if (!sImmersiveConfig.enabled)
-        return;
-
-    if (!sImmersiveConfig.manualAttributes)
-        return;
-
-#ifdef ENABLE_PLAYERBOTS
-    if (!player->isRealPlayer())
-        return;
-#endif
-
-    const uint32 usedStats = GetUsedStats(player);
-    const uint32 totalStats = GetTotalStats(player);
-    const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
-    if (availablePoints > 0)
-    {
-        SendSysMessage(player, FormatString(
-                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
-                    availablePoints));
-    }
-}
-
 #ifdef ENABLE_PLAYERBOTS
 class OnGiveMoneyAction : public ImmersiveAction
 {
 public:
-    OnGiveMoneyAction(int32 value) : ImmersiveAction(), value(value) {}
+    OnGiveMoneyAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
 
     bool Run(Player* player, Player* bot) override
     {
-        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)sImmersiveConfig.sharedXpPercentLevelDiff)
+        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)config->sharedXpPercentLevelDiff)
             return false;
 
         if (!CheckSharedPercentReqs(player, bot))
             return false;
 
-        bot->ModifyMoney(ApplyRandomPercent(value));
+        bot->ModifyMoney(ApplyRandomPercent(value, config));
         return true;
     }
 
     std::string GetActionMessage(Player* player) override
     {
-        return ImmersiveModule::FormatString
+        return FormatString
         (
             sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
             ai::ChatHelper::formatMoney(value).c_str()
@@ -849,34 +1460,11 @@ private:
 };
 #endif
 
-void ImmersiveModule::OnPlayerModifyMoney(Player *player, int32 delta)
-{
-#ifdef ENABLE_PLAYERBOTS
-    if (!sImmersiveConfig.enabled) 
-        return;
-
-    if (!player->GetPlayerbotMgr())
-        return;
-
-    if (delta < 1) 
-        return;
-
-    if (sImmersiveConfig.sharedMoneyPercent < 0.01f)
-        return;
-
-    int32 botMoney = (int32) (delta * sImmersiveConfig.sharedMoneyPercent / 100.0f);
-    if (botMoney < 1) return;
-
-    OnGiveMoneyAction action(botMoney);
-    RunAction(player, &action);
-#endif
-}
-
 #ifdef ENABLE_PLAYERBOTS
 class OnReputationChangeAction : public ImmersiveAction
 {
 public:
-    OnReputationChangeAction(FactionEntry const* factionEntry, int32 value) : ImmersiveAction(), factionEntry(factionEntry), value(value) {}
+    OnReputationChangeAction(FactionEntry const* factionEntry, int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), factionEntry(factionEntry), value(value) {}
 
     bool Run(Player* player, Player* bot) override
     {
@@ -886,16 +1474,18 @@ public:
         }
         else
         {
-            bot->GetReputationMgr().ModifyReputation(factionEntry, ApplyRandomPercent(value));
+            bot->GetReputationMgr().ModifyReputation(factionEntry, ApplyRandomPercent(value, config));
             return true;
         }
     }
 
     string GetActionMessage(Player* player) override
     {
-        return ImmersiveModule::FormatString(
-               sObjectMgr.GetMangosString(LANG_IMMERSIVE_REPUTATION_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-               value);
+        return FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_REPUTATION_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
+            value
+        );
     }
 
 private:
@@ -904,34 +1494,11 @@ private:
 };
 #endif
 
-void ImmersiveModule::OnPlayerSetReputation(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental)
-{
-#ifdef ENABLE_PLAYERBOTS
-    if (!sImmersiveConfig.enabled)
-        return;
-
-    if (!player->GetPlayerbotMgr())
-        return;
-
-    if (!incremental)
-        return;
-
-    if (sImmersiveConfig.sharedRepPercent < 0.01f)
-        return;
-
-    int32 value = (uint32) (standing * sImmersiveConfig.sharedRepPercent / 100.0f);
-    if (value < 1) return;
-
-    OnReputationChangeAction action(factionEntry, value);
-    RunAction(player, &action);
-#endif
-}
-
 #ifdef ENABLE_PLAYERBOTS
 class OnRewardQuestAction : public ImmersiveAction
 {
 public:
-    OnRewardQuestAction(Quest const* quest) : ImmersiveAction(), quest(quest) {}
+    OnRewardQuestAction(Quest const* quest, ImmersiveModuleConfig* config) : ImmersiveAction(config), quest(quest) {}
 
     bool Run(Player* player, Player* bot) override
     {
@@ -962,9 +1529,11 @@ public:
 
     std::string GetActionMessage(Player* player) override
     {
-        return ImmersiveModule::FormatString(
-               sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
-               quest->GetTitle().c_str());
+        return FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
+            quest->GetTitle().c_str()
+        );
     }
 
 private:
@@ -972,75 +1541,8 @@ private:
 };
 #endif
 
-void ImmersiveModule::OnPlayerRewardQuest(Player* player, Quest const* quest)
-{
-#ifdef ENABLE_PLAYERBOTS
-    if (!sImmersiveConfig.enabled)
-        return;
-
-    if (!player->GetPlayerbotMgr())
-        return;
-
-    if (!sImmersiveConfig.sharedQuests)
-        return;
-
-    if (!quest || quest->IsRepeatable()) 
-        return;
-
-    OnRewardQuestAction action(quest);
-    RunAction(player, &action);
-#endif
-}
-
-bool ImmersiveModule::OnPlayerUseFishingNode(Player* player, bool success)
-{
-    if (!sImmersiveConfig.enabled || !success)
-        return success;
-
-    if (!sImmersiveConfig.fishingBaubles)
-        return success;
-
-    Item* const item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-    if (!item) 
-        return false;
-
-    uint32 eId = item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT);
-    uint32 eDuration = item->GetEnchantmentDuration(TEMP_ENCHANTMENT_SLOT);
-    if (!eDuration) 
-        return false;
-
-    SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(eId);
-    if (!pEnchant)
-        return false;
-
-    for (int s = 0; s < 3; ++s)
-    {
-        uint32 spellId = pEnchant->spellid[s];
-        if (pEnchant->type[s] == ITEM_ENCHANTMENT_TYPE_EQUIP_SPELL && spellId)
-        {
-            SpellEntry const *entry = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
-            if (entry)
-            {
-                for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
-                {
-                    if (entry->Effect[i] == SPELL_EFFECT_APPLY_AURA && entry->EffectMiscValue[i] == SKILL_FISHING)
-                        return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
 int32 ImmersiveModule::CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type)
 {
-    if (!sImmersiveConfig.enabled) 
-        return difference;
-
-    if (!sImmersiveConfig.manualAttributes)
-        return difference;
-
     if (!attacker || !victim)
         return difference;
 
@@ -1111,36 +1613,13 @@ uint32 ImmersiveModule::CalculateEffectiveChanceDelta(const Unit* unit)
     return 0;
 }
 
-void ImmersiveModule::OnPlayerGossipHello(Player* player, Creature* creature)
-{
-#if EXPANSION == 1
-    if (player && creature)
-    {
-        GossipMenu& menu = player->GetPlayerMenu()->GetGossipMenu();
-        uint32 textId = player->GetGossipTextId(menu.GetMenuId(), creature);
-        GossipText const* text = sObjectMgr.GetGossipText(textId);
-        if (text)
-        {
-            for (int i = 0; i < MAX_GOSSIP_TEXT_OPTIONS; i++)
-            {
-                std::string text0 = text->Options[i].Text_0;
-                if (!text0.empty()) creature->MonsterSay(text0.c_str(), 0, player);
-                std::string text1 = text->Options[i].Text_1;
-                if (!text1.empty() && text0 != text1) creature->MonsterSay(text1.c_str(), 0, player);
-            }
-        }
-    }
-
-#endif
-}
-
 std::map<uint8,float> scale;
 void ImmersiveModule::CheckScaleChange(Player* player)
 {
-    if (!sImmersiveConfig.enabled) 
+    if (!GetConfig()->enabled) 
         return;
 
-    if (!sImmersiveConfig.scaleModifierWorkaround) 
+    if (!GetConfig()->scaleModifierWorkaround) 
         return;
 
     uint8 race = player->getRace();
@@ -1160,89 +1639,3 @@ void ImmersiveModule::CheckScaleChange(Player* player)
         player->SetObjectScale(scale[race] - (player->getGender() == GENDER_MALE ? 0.1f : 0));
     }
 }
-
-void ImmersiveModule::Update(uint32 elapsed)
-{
-    if (!sImmersiveConfig.enabled)
-        return;
-    
-    if (sImmersiveConfig.disableOfflineRespawn || sImmersiveConfig.disableInstanceRespawn)
-    {
-        if (updateDelay > elapsed)
-        {
-            updateDelay -= elapsed;
-        }
-        else
-        {
-            updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
-            SetStatsValue(0, "last_ping", sWorld.GetGameTime());
-        }
-    }
-}
-
-void ImmersiveModule::Init()
-{
-    sImmersiveConfig.Initialize();
-
-    if (!sImmersiveConfig.enabled)
-        return;
-    
-    if (sImmersiveConfig.disableOfflineRespawn || sImmersiveConfig.disableInstanceRespawn)
-    {
-        updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
-        DisableOfflineRespawn();
-    }
-}
-
-bool ImmersiveModule::OnPlayerPrepareUnitGossipMenu(uint32 optionId)
-{
-    return optionId == GOSSIP_OPTION_IMMERSIVE;
-}
-
-void ImmersiveModule::DisableOfflineRespawn()
-{
-    uint32 lastPing = GetStatsValue(0, "last_ping");
-    if (!lastPing) return;
-    
-    uint32 offlineTime = sWorld.GetGameTime() - lastPing; 
-    sLog.outString("Prolonging respawn time: +%u sec", offlineTime);
-    
-    CharacterDatabase.BeginTransaction();
-    
-    CharacterDatabase.DirectPExecute("update `creature_respawn` set `respawntime` = `respawntime` + '%u'", offlineTime);
-    CharacterDatabase.DirectPExecute("update `instance_reset` set `resettime` = `resettime` + '%u'", offlineTime);
-    CharacterDatabase.DirectPExecute("update `instance` set `resettime` = `resettime` + '%u'", offlineTime);
-    CharacterDatabase.DirectPExecute("update `gameobject_respawn` set `respawntime` = `respawntime` + '%u'", offlineTime);
-    SetStatsValue(0, "last_ping", sWorld.GetGameTime());
-    
-    CharacterDatabase.CommitTransaction();
-}
-
-bool ImmersiveModule::CanCreatureRespawn(Creature* creature) const
-{
-    if (sImmersiveConfig.enabled)
-    {
-        // Disable instance creatures respawn 
-        if (sImmersiveConfig.disableInstanceRespawn)
-        {
-            // Don't prevent manual respawns to happen
-            if (!creature->IsManualRespawnScheduled())
-            {
-                Map* map = creature->GetMap();
-                if (map && !map->IsBattleGround() && (map->IsDungeon() || map->IsRaid()))
-                {
-                    return false;
-                }
-            }
-        }
-    }
-
-    return true;
-}
-
-float ImmersiveModule::GetFallThreshold(const float defaultVal)
-{
-    return sImmersiveConfig.enabled ? 4.57f : defaultVal;
-}
-
-INSTANTIATE_SINGLETON_1( ImmersiveModule );

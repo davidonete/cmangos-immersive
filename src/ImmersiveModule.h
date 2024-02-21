@@ -1,26 +1,17 @@
 #ifndef _IMMERSIVE_H
 #define _IMMERSIVE_H
 
-#include "Platform/Define.h"
+#include "Module.h"
+#include "ImmersiveModuleConfig.h"
 
-#include <string>
-#include <map>
-
-class Creature;
-class Player;
-class Quest;
-class Unit;
-class WorldObject;
-
-struct FactionEntry;
-struct GossipMenuItemData;
 struct PlayerInfo;
-struct PlayerLevelInfo;
+
+class ImmersiveModule;
 
 class ImmersiveAction
 {
 public:
-    ImmersiveAction() {}
+    ImmersiveAction(ImmersiveModuleConfig* config) : config(config) {}
 
 public:
     virtual bool Run(Player* player, Player* bot) = 0;
@@ -29,42 +20,52 @@ public:
 protected:
     virtual bool CheckSharedPercentReqs(Player* player, Player* bot);
     virtual bool CheckSharedPercentReqsSingle(Player* player, Player* bot);
+
+protected:
+    ImmersiveModuleConfig* config;
 };
 
 class ImmersiveModule : public Module
 {
 public:
     ImmersiveModule();
+    ImmersiveModuleConfig* CreateConfig() override { return new ImmersiveModuleConfig(); }
+    ImmersiveModuleConfig* GetConfig() override { return (ImmersiveModuleConfig*)GetConfigInternal(); }
 
-    void Init();
-    void Update(uint32 elapsed);
+    // Module Hooks
+    void OnInitialize() override;
+    void OnUpdate(uint32 elapsed) override;
 
-    static std::string FormatString(const char* format, ...);
+    // Player Hooks
+    bool OnHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ) override;
+    void OnResurrect(Player* player) override;
+    void OnGiveXP(Player* player, uint32 xp, Creature* victim) override;
+    void OnGiveLevel(Player* player, uint32 level) override;
+    void OnModifyMoney(Player* player, int32 diff) override;
+    void OnSetReputation(Player* player, const FactionEntry* factionEntry, int32 standing, bool incremental) override;
+    void OnRewardQuest(Player* player, const Quest* quest) override;
+    bool OnPrepareGossipMenu(Player* player, WorldObject* source, const GossipMenuItems& gossipMenu) override;
+    bool OnGossipHello(Player* player, Creature* creature) override;
+    bool OnGossipSelect(Player* player, Unit* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId) override;
+    void OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info) override;
 
-    // Fall damage
-    float GetFallThreshold(const float defaultVal);
+    // Creature Hooks
+    bool OnRespawn(Creature* creature) override;
+
+    // Game Object Hooks
+    bool OnUseFishingNode(GameObject* gameObject, Player* player) override;
+
+    // Unit Hooks
+    bool OnCalculateEffectiveBlockChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float& outChance) override;
+    bool OnCalculateEffectiveParryChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float& outChance) override;
+    bool OnCalculateEffectiveCritChance(const Unit* unit, const Unit* victim, uint8 attType, const SpellEntry* ability, float& outChance) override;
+    bool OnCalculateEffectiveMissChance(const Unit* unit, const Unit* victim, uint8 attType, const SpellEntry* ability, const Spell* const* currentSpells, const SpellPartialResistDistribution& spellPartialResistDistribution, float& outChance) override;
+
+private:
     float GetFallDamage(Player* player, float zdist, float defaultVal);
-
-    // Respawn
-    bool CanCreatureRespawn(Creature* creature) const;
+    bool HasFishingBauble(Player* player);
     void DisableOfflineRespawn();
-
-    // Player methods
-    void OnPlayerResurrect(Player *player);
-    void OnPlayerGiveXP(Player *player, uint32 xp, Unit* victim);
-    void OnPlayerGiveLevel(Player* player);
-    void OnPlayerModifyMoney(Player *player, int32 delta);
-    void OnPlayerSetReputation(Player* player, FactionEntry const* factionEntry, int32& standing, bool incremental);
-    void OnPlayerRewardQuest(Player* player, Quest const* quest);
-    bool OnPlayerUseFishingNode(Player* player, bool success);
-
-    // Manual stats
-    bool OnPlayerPrepareUnitGossipMenu(uint32 optionId);
-    void OnPlayerGossipSelect(Player* player, WorldObject* source, uint32 gossipOptionId, uint32 gossipListId, GossipMenuItemData* menuData);
-    void OnPlayerGossipHello(Player* player, Creature* creature);
-
-    PlayerInfo const* GetPlayerInfo(uint32 race, uint32 class_);
-    void GetPlayerLevelInfo(Player* player, PlayerLevelInfo* info);
+    const PlayerInfo* GetPlayerInfo(uint32 race, uint32 class_);
     int32 CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type);
 
 private:
@@ -95,6 +96,5 @@ private:
     uint32 updateDelay;
 };
 
-#define sImmersiveMgr MaNGOS::Singleton<ImmersiveMgr>::Instance()
-
+static ImmersiveModule immersiveModule;
 #endif
