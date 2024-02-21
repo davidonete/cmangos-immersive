@@ -1,9 +1,9 @@
 #include "ImmersiveModule.h"
 #include "ImmersiveModuleConfig.h"
 
-#include "Entities/Creature.h"
 #include "Entities/GossipDef.h"
 #include "Entities/Player.h"
+#include "Entities/Creature.h"
 #include "Globals/SharedDefines.h"
 #include "Globals/ObjectMgr.h"
 #include "Log.h"
@@ -249,6 +249,56 @@ void ImmersiveModule::OnResurrect(Player* player)
     }
 }
 
+uint32 ApplyRandomPercent(uint32 value, ImmersiveModuleConfig* config)
+{
+    if (!config->enabled || !config->sharedRandomPercent) return value;
+    float percent = (float)urand(0, config->sharedRandomPercent) - (float)config->sharedRandomPercent / 2;
+    return value + (uint32)(value * percent / 100.0f);
+}
+
+#ifdef ENABLE_PLAYERBOTS
+class OnGiveXPAction : public ImmersiveAction
+{
+public:
+    OnGiveXPAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
+
+    bool Run(Player* player, Player* bot) override
+    {
+        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)config->sharedXpPercentLevelDiff)
+        {
+            return false;
+        }
+
+        if (!CheckSharedPercentReqs(player, bot))
+        {
+            return false;
+        }
+
+        bot->GiveXP(ApplyRandomPercent(value, config), NULL);
+
+        Pet* pet = bot->GetPet();
+        if (pet && pet->getPetType() == HUNTER_PET)
+        {
+            pet->GivePetXP(ApplyRandomPercent(value, config));
+        }
+
+        return true;
+    }
+
+    std::string GetActionMessage(Player* player) override
+    {
+        return FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
+            value
+        );
+    }
+
+private:
+    int32 value;
+};
+#endif
+
 void ImmersiveModule::OnGiveXP(Player* player, uint32 xp, Creature* victim)
 {
 #ifdef ENABLE_PLAYERBOTS
@@ -297,6 +347,38 @@ void ImmersiveModule::OnGiveLevel(Player* player, uint32 level)
     }
 }
 
+#ifdef ENABLE_PLAYERBOTS
+class OnGiveMoneyAction : public ImmersiveAction
+{
+public:
+    OnGiveMoneyAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
+
+    bool Run(Player* player, Player* bot) override
+    {
+        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)config->sharedXpPercentLevelDiff)
+            return false;
+
+        if (!CheckSharedPercentReqs(player, bot))
+            return false;
+
+        bot->ModifyMoney(ApplyRandomPercent(value, config));
+        return true;
+    }
+
+    std::string GetActionMessage(Player* player) override
+    {
+        return FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
+            ai::ChatHelper::formatMoney(value).c_str()
+        );
+    }
+
+private:
+    int32 value;
+};
+#endif
+
 void ImmersiveModule::OnModifyMoney(Player* player, int32 diff)
 {
 #ifdef ENABLE_PLAYERBOTS
@@ -320,6 +402,40 @@ void ImmersiveModule::OnModifyMoney(Player* player, int32 diff)
 #endif
 }
 
+#ifdef ENABLE_PLAYERBOTS
+class OnReputationChangeAction : public ImmersiveAction
+{
+public:
+    OnReputationChangeAction(FactionEntry const* factionEntry, int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), factionEntry(factionEntry), value(value) {}
+
+    bool Run(Player* player, Player* bot) override
+    {
+        if (!CheckSharedPercentReqs(player, bot))
+        {
+            return false;
+        }
+        else
+        {
+            bot->GetReputationMgr().ModifyReputation(factionEntry, ApplyRandomPercent(value, config));
+            return true;
+        }
+    }
+
+    string GetActionMessage(Player* player) override
+    {
+        return FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_REPUTATION_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
+            value
+        );
+    }
+
+private:
+    FactionEntry const* factionEntry;
+    int32 value;
+};
+#endif
+
 void ImmersiveModule::OnSetReputation(Player* player, FactionEntry const* factionEntry, int32 standing, bool incremental)
 {
 #ifdef ENABLE_PLAYERBOTS
@@ -342,6 +458,53 @@ void ImmersiveModule::OnSetReputation(Player* player, FactionEntry const* factio
     RunAction(player, &action);
 #endif
 }
+
+#ifdef ENABLE_PLAYERBOTS
+class OnRewardQuestAction : public ImmersiveAction
+{
+public:
+    OnRewardQuestAction(Quest const* quest, ImmersiveModuleConfig* config) : ImmersiveAction(config), quest(quest) {}
+
+    bool Run(Player* player, Player* bot) override
+    {
+        if (quest->GetRequiredClasses())
+        {
+            return false;
+        }
+
+        if (!CheckSharedPercentReqs(player, bot))
+        {
+            return false;
+        }
+
+        uint32 questId = quest->GetQuestId();
+        if (bot->GetQuestStatus(questId) != QUEST_STATUS_NONE)
+        {
+            return false;
+        }
+
+        bot->SetQuestStatus(questId, QUEST_STATUS_COMPLETE);
+        QuestStatusData& sd = bot->getQuestStatusMap()[questId];
+        sd.m_explored = true;
+        sd.m_rewarded = true;
+        sd.uState = (sd.uState != QUEST_NEW) ? QUEST_CHANGED : QUEST_NEW;
+
+        return true;
+    }
+
+    std::string GetActionMessage(Player* player) override
+    {
+        return FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
+            quest->GetTitle().c_str()
+        );
+    }
+
+private:
+    Quest const* quest;
+};
+#endif
 
 void ImmersiveModule::OnRewardQuest(Player* player, const Quest* quest)
 {
@@ -1520,169 +1683,6 @@ void ImmersiveModule::RunAction(Player* player, ImmersiveAction* action)
     out << "|cffffff00: " << action->GetActionMessage(player);
     SendSysMessage(player, out.str());
 }
-
-uint32 ApplyRandomPercent(uint32 value, ImmersiveModuleConfig* config)
-{
-    if (!config->enabled || !config->sharedRandomPercent) return value;
-    float percent = (float) urand(0, config->sharedRandomPercent) - (float)config->sharedRandomPercent / 2;
-    return value + (uint32) (value * percent / 100.0f);
-}
-
-#ifdef ENABLE_PLAYERBOTS
-class OnGiveXPAction : public ImmersiveAction
-{
-public:
-    OnGiveXPAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
-
-    bool Run(Player* player, Player* bot) override
-    {
-        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)config->sharedXpPercentLevelDiff)
-        {
-            return false;
-        }
-
-        if (!CheckSharedPercentReqs(player, bot))
-        {
-            return false;
-        }
-
-        bot->GiveXP(ApplyRandomPercent(value, config), NULL);
-
-        Pet *pet = bot->GetPet();
-        if (pet && pet->getPetType() == HUNTER_PET)
-        {
-            pet->GivePetXP(ApplyRandomPercent(value, config));
-        }
-
-        return true;
-    }
-
-    std::string GetActionMessage(Player* player) override
-    {
-        return FormatString
-        (
-            sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-            value
-        );
-    }
-
-private:
-    int32 value;
-};
-#endif
-
-#ifdef ENABLE_PLAYERBOTS
-class OnGiveMoneyAction : public ImmersiveAction
-{
-public:
-    OnGiveMoneyAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
-
-    bool Run(Player* player, Player* bot) override
-    {
-        if ((int)player->GetLevel() - (int)bot->GetLevel() < (int)config->sharedXpPercentLevelDiff)
-            return false;
-
-        if (!CheckSharedPercentReqs(player, bot))
-            return false;
-
-        bot->ModifyMoney(ApplyRandomPercent(value, config));
-        return true;
-    }
-
-    std::string GetActionMessage(Player* player) override
-    {
-        return FormatString
-        (
-            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-            ai::ChatHelper::formatMoney(value).c_str()
-        );
-    }
-
-private:
-    int32 value;
-};
-#endif
-
-#ifdef ENABLE_PLAYERBOTS
-class OnReputationChangeAction : public ImmersiveAction
-{
-public:
-    OnReputationChangeAction(FactionEntry const* factionEntry, int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), factionEntry(factionEntry), value(value) {}
-
-    bool Run(Player* player, Player* bot) override
-    {
-        if (!CheckSharedPercentReqs(player, bot))
-        {
-            return false;
-        }
-        else
-        {
-            bot->GetReputationMgr().ModifyReputation(factionEntry, ApplyRandomPercent(value, config));
-            return true;
-        }
-    }
-
-    string GetActionMessage(Player* player) override
-    {
-        return FormatString
-        (
-            sObjectMgr.GetMangosString(LANG_IMMERSIVE_REPUTATION_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-            value
-        );
-    }
-
-private:
-    FactionEntry const* factionEntry;
-    int32 value;
-};
-#endif
-
-#ifdef ENABLE_PLAYERBOTS
-class OnRewardQuestAction : public ImmersiveAction
-{
-public:
-    OnRewardQuestAction(Quest const* quest, ImmersiveModuleConfig* config) : ImmersiveAction(config), quest(quest) {}
-
-    bool Run(Player* player, Player* bot) override
-    {
-        if (quest->GetRequiredClasses())
-        {
-            return false;
-        }
-
-        if (!CheckSharedPercentReqs(player, bot))
-        {
-            return false;
-        }
-
-        uint32 questId = quest->GetQuestId();
-        if (bot->GetQuestStatus(questId) != QUEST_STATUS_NONE)
-        {
-            return false;
-        }
-
-        bot->SetQuestStatus(questId, QUEST_STATUS_COMPLETE);
-        QuestStatusData& sd = bot->getQuestStatusMap()[questId];
-        sd.m_explored = true;
-        sd.m_rewarded = true;
-        sd.uState = (sd.uState != QUEST_NEW) ? QUEST_CHANGED : QUEST_NEW;
-
-        return true;
-    }
-
-    std::string GetActionMessage(Player* player) override
-    {
-        return FormatString
-        (
-            sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
-            quest->GetTitle().c_str()
-        );
-    }
-
-private:
-    Quest const* quest;
-};
-#endif
 
 int32 ImmersiveModule::CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type)
 {
