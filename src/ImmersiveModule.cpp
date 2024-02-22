@@ -808,7 +808,7 @@ bool ImmersiveModule::OnCalculateEffectiveDodgeChance(const Unit* unit, const Un
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit)
+        if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
             outChance = 0.0f;
             outChance += unit->GetDodgeChance();
@@ -848,7 +848,7 @@ bool ImmersiveModule::OnCalculateEffectiveBlockChance(const Unit* unit, const Un
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit)
+        if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
             outChance = 0.0f;
             outChance += unit->GetBlockChance();
@@ -888,7 +888,7 @@ bool ImmersiveModule::OnCalculateEffectiveParryChance(const Unit* unit, const Un
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit)
+        if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
             outChance = 0.0f;
             if (attType == RANGED_ATTACK)
@@ -938,7 +938,7 @@ bool ImmersiveModule::OnCalculateEffectiveCritChance(const Unit* unit, const Uni
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit)
+        if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
             outChance = 0.0f;
             outChance += (ability ? unit->GetCritChance(ability, SPELL_SCHOOL_MASK_NORMAL) : unit->GetCritChance((WeaponAttackType)attType));
@@ -999,7 +999,7 @@ bool ImmersiveModule::OnCalculateEffectiveMissChance(const Unit* unit, const Uni
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit)
+        if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
             outChance = 0.0f;
             outChance += (ability ? victim->GetMissChance(ability, SPELL_SCHOOL_MASK_NORMAL) : victim->GetMissChance((WeaponAttackType)attType));
@@ -1075,7 +1075,7 @@ bool ImmersiveModule::OnCalculateSpellMissChance(const Unit* unit, const Unit* v
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit)
+        if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
             outChance = 0.0f;
             const float minimum = 1.0f; // Pre-WotLK: unavoidable spellInfo miss is at least 1%
@@ -1127,7 +1127,7 @@ bool ImmersiveModule::OnGetAttackDistance(const Unit* unit, const Unit* target, 
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit)
+        if (unit && target && (unit->IsPlayer() || target->IsPlayer()))
         {
             float aggroRate = sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
             uint32 playerlevel = target->GetLevelForTarget(unit);
