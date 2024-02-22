@@ -577,12 +577,11 @@ bool ImmersiveModule::OnGossipSelect(Player* player, Creature* creature, uint32 
             if (!creature->IsTrainerOf(player, false))
                 return false;
 
-            player->GetPlayerMenu()->ClearMenus();
-
             switch (action)
             {
                 case IMMERSIVE_GOSSIP_OPTION_MENU:
                 {
+                    player->GetPlayerMenu()->ClearMenus();
                     const std::string checkAtributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_CHECK_CURRENT);
                     player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, checkAtributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_CHECK_CURRENT, "", false);
                     const std::string resetAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN);
@@ -632,6 +631,7 @@ bool ImmersiveModule::OnGossipSelect(Player* player, Creature* creature, uint32 
 
                 case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_MENU:
                 {
+                    player->GetPlayerMenu()->ClearMenus();
                     const std::string removeReductionStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_REMOVE);
                     player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, removeReductionStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_0, "", false);
                     const std::string reduceStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_PCT);
