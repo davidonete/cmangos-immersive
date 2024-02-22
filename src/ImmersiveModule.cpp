@@ -552,7 +552,7 @@ void ImmersiveModule::OnRewardQuest(Player* player, const Quest* quest)
 #endif
 }
 
-bool ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
+void ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
@@ -560,7 +560,7 @@ bool ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
         {
             // Check if speaking with a class trainer
             if (!creature->IsTrainerOf(player, false))
-                return false;
+                return;
 
             player->GetPlayerMenu()->ClearMenus();
 
@@ -569,18 +569,15 @@ bool ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
         }
 
     }
-
-    return false;
 }
 
-bool ImmersiveModule::OnGossipSelect(Player* player, Unit* unit, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId)
+bool ImmersiveModule::OnPreGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId)
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (player && unit && unit->IsCreature())
+        if (player && creature)
         {
             // Check if speaking with a class trainer
-            Creature* creature = (Creature*)unit;
             if (!creature->IsTrainerOf(player, false))
                 return false;
 
