@@ -1,6 +1,7 @@
 #include "ImmersiveModule.h"
 #include "ImmersiveModuleConfig.h"
 
+#include "AI/ScriptDevAI/include/sc_gossip.h"
 #include "Entities/Creature.h"
 #include "Entities/GossipDef.h"
 #include "Entities/Player.h"
@@ -551,40 +552,47 @@ void ImmersiveModule::OnRewardQuest(Player* player, const Quest* quest)
 #endif
 }
 
-bool ImmersiveModule::OnPrepareGossipMenu(Player* player, WorldObject* source, const GossipMenuItems& gossipMenu)
-{
-    return gossipMenu.option_id == GOSSIP_OPTION_IMMERSIVE;
-}
-
 bool ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
 {
-    if (!GetConfig()->enabled)
-        return false;
-
-#if EXPANSION == 1
-    if (player && creature)
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        GossipMenu& menu = player->GetPlayerMenu()->GetGossipMenu();
-        uint32 textId = player->GetGossipTextId(menu.GetMenuId(), creature);
-        GossipText const* text = sObjectMgr.GetGossipText(textId);
-        if (text)
+        if (player && creature)
         {
-            for (int i = 0; i < MAX_GOSSIP_TEXT_OPTIONS; i++)
-            {
-                std::string text0 = text->Options[i].Text_0;
-                if (!text0.empty()) creature->MonsterSay(text0.c_str(), 0, player);
-                std::string text1 = text->Options[i].Text_1;
-                if (!text1.empty() && text0 != text1) creature->MonsterSay(text1.c_str(), 0, player);
-            }
+            // Check if speaking with a class trainer
+            if (!creature->IsTrainerOf(player, false))
+                return false;
+
+            player->GetPlayerMenu()->ClearMenus();
+
+            const std::string manageAtributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MANAGE);
+            player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, manageAtributesStr, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF, "", false);
         }
+
     }
-#endif
 
     return false;
 }
 
-bool ImmersiveModule::OnGossipSelect(Player* player, Unit* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId)
+bool ImmersiveModule::OnGossipSelect(Player* player, Unit* unit, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId)
 {
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
+        if (player && unit && unit->IsCreature())
+        {
+            // Check if speaking with a class trainer
+            Creature* creature = (Creature*)unit;
+            if (!creature->IsTrainerOf(player, false))
+                return false;
+
+            player->GetPlayerMenu()->ClearMenus();
+
+
+            return true;
+        }
+    }
+
+    return false;
+    /*
     GossipMenu& gossipMenu = player->GetPlayerMenu()->GetGossipMenu();
     uint32 gossipOptionId = gossipMenu.GetItem(gossipListId).m_gOptionId;
     if (gossipOptionId == GOSSIP_OPTION_IMMERSIVE)
@@ -659,6 +667,7 @@ bool ImmersiveModule::OnGossipSelect(Player* player, Unit* creature, uint32 send
     }
 
     return false;
+    */
 }
 
 void ImmersiveModule::OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info)
@@ -1325,10 +1334,12 @@ void ImmersiveModule::PrintHelp(Player *player, bool detailed, bool help)
     uint32 totalStats = GetTotalStats(player);
     uint32 purchaseCost = GetStatCost(player) * GetConfig()->manualAttributesIncrease;
 
-    SendSysMessage(player, FormatString(
-                sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AVAILABLE, player->GetSession()->GetSessionDbLocaleIndex()),
-                (totalStats > usedStats ? totalStats - usedStats : 0),
-                formatMoney(purchaseCost).c_str()));
+    SendSysMessage(player, FormatString
+    (
+        sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AVAILABLE, player->GetSession()->GetSessionDbLocaleIndex()),
+        (totalStats > usedStats ? totalStats - usedStats : 0),
+        formatMoney(purchaseCost).c_str())
+    );
 
     if (detailed)
     {
