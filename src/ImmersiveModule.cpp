@@ -581,7 +581,7 @@ bool ImmersiveModule::OnGossipSelect(Player* player, Unit* creature, uint32 send
     {
         const GossipMenuItemData* menuData = gossipMenu.GetItemData(gossipListId);
         bool closeGossipWindow = false;
-        if (!GetConfig()->enabled)
+        if (!GetConfig()->enabled || !GetConfig()->manualAttributes)
         {
             SendSysMessage(player, sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_DISABLED, player->GetSession()->GetSessionDbLocaleIndex()));
             closeGossipWindow = true;
@@ -653,26 +653,23 @@ bool ImmersiveModule::OnGossipSelect(Player* player, Unit* creature, uint32 send
 
 void ImmersiveModule::OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info)
 {
-    if (!GetConfig()->enabled)
-        return;
-
-    if (!GetConfig()->manualAttributes)
-        return;
-
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
 #ifdef ENABLE_PLAYERBOTS
-    // Don't use custom stats on random bots
-    if (!player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player))
-        return;
+        // Don't use custom stats on random bots
+        if (!player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player))
+            return;
 #endif
 
-    const PlayerInfo* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
-    info = playerInfo->levelInfo[0];
+        const PlayerInfo* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
+        info = playerInfo->levelInfo[0];
 
-    uint32 owner = player->GetObjectGuid().GetRawValue();
-    int modifier = GetModifierValue(owner);
-    for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
-    {
-        info.stats[i] += GetStatsValue(owner, (Stats)i) * modifier / 100;
+        uint32 owner = player->GetObjectGuid().GetRawValue();
+        int modifier = GetModifierValue(owner);
+        for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
+        {
+            info.stats[i] += GetStatsValue(owner, (Stats)i) * modifier / 100;
+        }
     }
 }
 
