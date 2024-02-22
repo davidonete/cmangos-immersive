@@ -77,6 +77,19 @@ std::string FormatString(const char* format, ...)
     return std::string(out);
 }
 
+#ifdef ENABLE_PLAYERBOTS
+bool IsRandomBot(const Unit* unit)
+{
+    if (unit && unit->IsPlayer())
+    {
+        Player* player = (Player*)unit;
+        return !player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player);
+    }
+
+    return false;
+}
+#endif
+
 ImmersiveModule::ImmersiveModule()
 : Module("Immersive")
 , updateDelay(0U)
@@ -340,15 +353,11 @@ void ImmersiveModule::OnGiveXP(Player* player, uint32 xp, Creature* victim)
 
 void ImmersiveModule::OnGiveLevel(Player* player, uint32 level)
 {
-    if (!GetConfig()->enabled)
-        return;
-
-    if (!GetConfig()->manualAttributes)
-        return;
-
+    if (GetConfig()->enabled && GetConfig()->manualAttributes)
+    {
 #ifdef ENABLE_PLAYERBOTS
-    if (!player->isRealPlayer())
-        return;
+        if (!player->isRealPlayer())
+            return;
 #endif
 
     const uint32 usedStats = GetUsedStats(player);
@@ -359,6 +368,7 @@ void ImmersiveModule::OnGiveLevel(Player* player, uint32 level)
         SendSysMessage(player, FormatString(
             sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
             availablePoints));
+    }
     }
 }
 
@@ -657,7 +667,7 @@ void ImmersiveModule::OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info
     {
 #ifdef ENABLE_PLAYERBOTS
         // Don't use custom stats on random bots
-        if (!player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player))
+        if (IsRandomBot(player))
             return;
 #endif
 
@@ -817,25 +827,16 @@ bool ImmersiveModule::OnUseFishingNode(GameObject* gameObject, Player* player)
     return false;
 }
 
-#ifdef ENABLE_PLAYERBOTS
-bool IsRandomBot(const Unit* unit)
-{
-    if (unit && unit->IsPlayer())
-    {
-        Player* player = (Player*)unit;
-        return !player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player);
-    }
-
-    return false;
-}
-#endif
-
 bool ImmersiveModule::OnCalculateEffectiveDodgeChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float& outChance)
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
+        if (unit && attacker)
         {
+            // Check if the stats modifier is set
+            if (!CalculateEffectiveChanceDelta(unit) && !CalculateEffectiveChanceDelta(attacker))
+                return false;
+
             outChance = 0.0f;
             outChance += unit->GetDodgeChance();
 
@@ -843,7 +844,7 @@ bool ImmersiveModule::OnCalculateEffectiveDodgeChance(const Unit* unit, const Un
             if (outChance < 0.005f)
             {
                 outChance = 0.0f;
-                return outChance;
+                return false;
             }
 
             const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
@@ -874,15 +875,19 @@ bool ImmersiveModule::OnCalculateEffectiveBlockChance(const Unit* unit, const Un
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
+        if (unit && attacker)
         {
+            // Check if the stats modifier is set
+            if (!CalculateEffectiveChanceDelta(unit) && !CalculateEffectiveChanceDelta(attacker))
+                return false;
+
             outChance = 0.0f;
             outChance += unit->GetBlockChance();
             // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
             if (outChance < 0.005f)
             {
                 outChance = 0.0f;
-                return true;
+                return false;
             }
 
             const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
@@ -914,20 +919,24 @@ bool ImmersiveModule::OnCalculateEffectiveParryChance(const Unit* unit, const Un
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
+        if (unit && attacker)
         {
-            outChance = 0.0f;
+            // Check if the stats modifier is set
+            if (!CalculateEffectiveChanceDelta(unit) && !CalculateEffectiveChanceDelta(attacker))
+                return false;
+
             if (attType == RANGED_ATTACK)
             {
-                return true;
+                return false;
             }
 
+            outChance = 0.0f;
             outChance += unit->GetParryChance();
             // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
             if (outChance < 0.005f)
             {
                 outChance = 0.0f;
-                return true;
+                return false;
             }
 
             const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
@@ -964,8 +973,12 @@ bool ImmersiveModule::OnCalculateEffectiveCritChance(const Unit* unit, const Uni
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
+        if (unit && victim)
         {
+            // Check if the stats modifier is set
+            if (!CalculateEffectiveChanceDelta(unit) && !CalculateEffectiveChanceDelta(victim))
+                return false;
+
             outChance = 0.0f;
             outChance += (ability ? unit->GetCritChance(ability, SPELL_SCHOOL_MASK_NORMAL) : unit->GetCritChance((WeaponAttackType)attType));
             
@@ -973,14 +986,13 @@ bool ImmersiveModule::OnCalculateEffectiveCritChance(const Unit* unit, const Uni
             if (outChance < 0.005f)
             {
                 outChance = 0.0f;
-                return true;
+                return false;
             }
 
             // Skip victim calculation if positive ability
             if (ability && IsPositiveSpell(ability, unit, victim))
             {
-                outChance = std::max(0.0f, std::min(outChance, 100.0f));
-                return true;
+                return false;
             }
 
             const bool weapon = (!ability || IsSpellUseWeaponSkill(ability));
@@ -1025,8 +1037,12 @@ bool ImmersiveModule::OnCalculateEffectiveMissChance(const Unit* unit, const Uni
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
+        if (unit && victim)
         {
+            // Check if the stats modifier is set
+            if (!CalculateEffectiveChanceDelta(unit) && !CalculateEffectiveChanceDelta(victim))
+                return false;
+
             outChance = 0.0f;
             outChance += (ability ? victim->GetMissChance(ability, SPELL_SCHOOL_MASK_NORMAL) : victim->GetMissChance((WeaponAttackType)attType));
             
@@ -1034,7 +1050,7 @@ bool ImmersiveModule::OnCalculateEffectiveMissChance(const Unit* unit, const Uni
             if (outChance < 0.005f)
             {
                 outChance = 0.0f;
-                return true;
+                return false;
             }
 
             const bool ranged = (attType == RANGED_ATTACK);
@@ -1101,21 +1117,27 @@ bool ImmersiveModule::OnCalculateSpellMissChance(const Unit* unit, const Unit* v
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
+        if (unit && victim)
         {
+            // Check if the stats modifier is set
+            if (!CalculateEffectiveChanceDelta(unit) && !CalculateEffectiveChanceDelta(victim))
+                return false;
+
             outChance = 0.0f;
             const float minimum = 1.0f; // Pre-WotLK: unavoidable spellInfo miss is at least 1%
 
             if (spell->HasAttribute(SPELL_ATTR_EX3_NORMAL_RANGED_ATTACK) || spell->DmgClass == SPELL_DAMAGE_CLASS_MELEE || spell->DmgClass == SPELL_DAMAGE_CLASS_RANGED)
             {
-                outChance = unit->CalculateEffectiveMissChance(victim, GetWeaponAttackType(spell), spell);
-                return true;
+                return false;
             }
 
             outChance += victim->GetMissChance(spell, (SpellSchoolMask)schoolMask);
             // Victim's own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit can't be missed
             if (outChance < 0.005f)
-                return 0.0f;
+            {
+                outChance = 0.0f;
+                return false;
+            }
 
             // Level difference: positive adds to miss chance, negative substracts
             const bool vsPlayerOrPet = victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
@@ -1153,8 +1175,12 @@ bool ImmersiveModule::OnGetAttackDistance(const Unit* unit, const Unit* target, 
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
-        if (unit && target && (unit->IsPlayer() || target->IsPlayer()))
+        if (unit && target)
         {
+            // Check if the stats modifier is set
+            if (!CalculateEffectiveChanceDelta(unit) && !CalculateEffectiveChanceDelta(target))
+                return false;
+
             float aggroRate = sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
             uint32 playerlevel = target->GetLevelForTarget(unit);
             uint32 creaturelevel = unit->GetLevelForTarget(target);
@@ -1171,7 +1197,7 @@ bool ImmersiveModule::OnGetAttackDistance(const Unit* unit, const Unit* target, 
             if (outDistance == 0.f)
             {
                 outDistance = 0.0f;
-                return true;
+                return false;
             }
 
             // "Aggro Radius varies with level difference at a rate of roughly 1 yard/level"
