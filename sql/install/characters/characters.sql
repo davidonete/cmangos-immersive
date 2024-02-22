@@ -1,6 +1,6 @@
-DROP TABLE IF EXISTS `immersive_values`;
+DROP TABLE IF EXISTS `custom_immersive_values`;
 
-CREATE TABLE `immersive_values` (
+CREATE TABLE `custom_immersive_values` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `owner` bigint(20) NOT NULL,
   `type` varchar(45) DEFAULT NULL,

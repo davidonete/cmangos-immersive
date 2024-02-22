@@ -50,7 +50,7 @@ public:
     void OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info) override;
 
     // Creature Hooks
-    bool OnRespawn(Creature* creature) override;
+    bool OnRespawn(Creature* creature, time_t& respawnTime) override;
     void OnRespawnRequest(Creature* creature) override;
 
     // Game Object Hooks
@@ -94,10 +94,10 @@ private:
     void RunAction(Player* player, ImmersiveAction* action);
 
 private:
-    static std::map<uint8, std::string> statValues;
+    std::map<uint8, std::string> statValues;
     std::map< uint32, std::map<std::string, uint32> > valueCache;
-    uint32 updateDelay;
     std::unordered_set<uint32> creatureRespawnScheduled;
+    uint32 updateDelay;
 };
 
 static ImmersiveModule immersiveModule;

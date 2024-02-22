@@ -77,10 +77,9 @@ std::string FormatString(const char* format, ...)
     return std::string(out);
 }
 
-std::map<uint8, std::string> ImmersiveModule::statValues;
-
 ImmersiveModule::ImmersiveModule()
 : Module("Immersive")
+, updateDelay(0U)
 {
     statValues[STAT_STRENGTH] = "Strength";
     statValues[STAT_AGILITY] = "Agility";
@@ -661,7 +660,7 @@ void ImmersiveModule::OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info
     }
 }
 
-bool ImmersiveModule::OnRespawn(Creature* creature)
+bool ImmersiveModule::OnRespawn(Creature* creature, time_t& respawnTime)
 {
     if (GetConfig()->enabled && GetConfig()->disableInstanceRespawn)
     {
@@ -679,7 +678,8 @@ bool ImmersiveModule::OnRespawn(Creature* creature)
                 Map* map = creature->GetMap();
                 if (map && !map->IsBattleGround() && (map->IsDungeon() || map->IsRaid()))
                 {
-                    // Prevent respawning logic
+                    // Prevent respawning logic (and add 1 hour to the timer)
+                    respawnTime = time(nullptr) + 3600;
                     return true;
                 }
             }
@@ -1551,7 +1551,7 @@ uint32 ImmersiveModule::GetStatsValue(uint32 owner, const std::string& type)
     if (!value)
     {
         auto results = CharacterDatabase.PQuery(
-                "select `value` from immersive_values where owner = '%u' and `type` = '%s'",
+                "select `value` from `custom_immersive_values` where `owner` = '%u' and `type` = '%s'",
                 owner, type.c_str());
 
         if (results)
@@ -1568,13 +1568,13 @@ uint32 ImmersiveModule::GetStatsValue(uint32 owner, const std::string& type)
 void ImmersiveModule::SetStatsValue(uint32 owner, const std::string& type, uint32 value)
 {
     valueCache[owner][type] = value;
-    CharacterDatabase.DirectPExecute("delete from immersive_values where owner = '%u' and `type` = '%s'",
+    CharacterDatabase.DirectPExecute("delete from `custom_immersive_values` where `owner` = '%u' and `type` = '%s'",
             owner, type.c_str());
 
     if (value)
     {
         CharacterDatabase.DirectPExecute(
-                "insert into immersive_values (owner, `type`, `value`) values ('%u', '%s', '%u')",
+                "insert into `custom_immersive_values` (`owner`, `type`, `value`) values ('%u', '%s', '%u')",
                 owner, type.c_str(), value);
     }
 }

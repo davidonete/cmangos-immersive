@@ -31,8 +31,6 @@ ImmersiveModuleConfig::ImmersiveModuleConfig()
 
 bool ImmersiveModuleConfig::OnLoad()
 {
-    sLog.outString("Initializing Immersive module configuration");
-
     enabled = config.GetBoolDefault("Immersive.Enable", false);
     manualAttributes = config.GetBoolDefault("Immersive.ManualAttributes", false);
     manualAttributesPercent = config.GetIntDefault("Immersive.ManualAttributesPercent", 100);
@@ -56,7 +54,5 @@ bool ImmersiveModuleConfig::OnLoad()
     sharedRandomPercent = config.GetIntDefault("Immersive.SharedRandomPercent", 0);
     disableOfflineRespawn = config.GetBoolDefault("Immersive.DisableOfflineRespawn", false);
     disableInstanceRespawn = config.GetBoolDefault("Immersive.DisableInstanceRespawn", false);
-
-    sLog.outString("Immersive module configuration loaded");
     return true;
 }
