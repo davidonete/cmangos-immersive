@@ -586,7 +586,7 @@ bool ImmersiveModule::OnGossipSelect(Player* player, Creature* creature, uint32 
                     player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, checkAtributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_CHECK_CURRENT, "", false);
                     const std::string resetAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN);
                     const std::string resetAttributesAreYouSureStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN_SURE);
-                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, resetAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_RESET_STATS, resetAttributesAreYouSureStr, false);
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, resetAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_RESET_STATS_MENU, resetAttributesAreYouSureStr, false);
                     const std::string reduceAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE);
                     player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, reduceAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_MENU, "", false);
                     const std::string improveAttributeStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_IMPROVE);
@@ -622,7 +622,16 @@ bool ImmersiveModule::OnGossipSelect(Player* player, Creature* creature, uint32 
                     return true;
                 }
 
-                case IMMERSIVE_GOSSIP_OPTION_RESET_STATS:
+                case IMMERSIVE_GOSSIP_OPTION_RESET_STATS_MENU:
+                {
+                    player->GetPlayerMenu()->ClearMenus();
+                    const std::string resetConfirmStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN_SURE);
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, resetConfirmStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_RESET_STATS_CONFIRM, "", false);
+                    player->GetPlayerMenu()->SendGossipMenu(IMMERSIVE_RESET_ATTR_TEXT, creature->GetObjectGuid());
+                    return true;
+                }
+
+                case IMMERSIVE_GOSSIP_OPTION_RESET_STATS_CONFIRM:
                 {
                     ResetStats(player);
                     OnGossipSelect(player, creature, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_MENU, "", gossipListId);
