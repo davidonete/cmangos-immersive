@@ -30,7 +30,7 @@ class ImmersiveModule : public Module
 public:
     ImmersiveModule();
     ImmersiveModuleConfig* CreateConfig() override { return new ImmersiveModuleConfig(); }
-    ImmersiveModuleConfig* GetConfig() override { return (ImmersiveModuleConfig*)GetConfigInternal(); }
+    const ImmersiveModuleConfig* GetConfig() const override { return (ImmersiveModuleConfig*)GetConfigInternal(); }
 
     // Module Hooks
     void OnInitialize() override;
