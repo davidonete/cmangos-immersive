@@ -125,6 +125,22 @@ bool ImmersiveModule::OnHandleFall(Player* player, const MovementInfo& movementI
     {
         if (player)
         {
+            // Don't get extra fall damage on battlegrounds
+            if (player->InBattleGround())
+                return false;
+
+#if EXPANSION > 0
+            // Don't get extra fall damage on arenas
+            if (player->InArena())
+                return false;
+#endif
+
+#ifdef ENABLE_PLAYERBOTS
+            // Don't apply extra fall damage on bots
+            if (!player->isRealPlayer())
+                return false;
+#endif
+
             // calculate total z distance of the fall
             const Position & position = movementInfo.GetPos();
             float z_diff = lastFallZ - position.z;
@@ -132,7 +148,7 @@ bool ImmersiveModule::OnHandleFall(Player* player, const MovementInfo& movementI
 
             // Players with low fall distance, Feather Fall or physical immunity (charges used) are ignored
             // 14.57 can be calculated by resolving damageperc formula below to 0
-            if (z_diff >= 14.57f && !player->IsDead() && !player->IsGameMaster() && !player->HasMovementFlag(MOVEFLAG_ONTRANSPORT) &&
+            if (z_diff >= 4.57f && !player->IsDead() && !player->IsGameMaster() && !player->HasMovementFlag(MOVEFLAG_ONTRANSPORT) &&
                 !player->HasAuraType(SPELL_AURA_HOVER) && !player->HasAuraType(SPELL_AURA_FEATHER_FALL) &&
                 !player->IsImmuneToDamage(SPELL_SCHOOL_MASK_NORMAL))
             {
@@ -810,6 +826,12 @@ bool ImmersiveModule::OnCalculateEffectiveDodgeChance(const Unit* unit, const Un
     {
         if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
+#ifdef ENABLE_PLAYERBOTS
+            // Random bots should not be affected by this
+            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+                return false;
+#endif
+
             outChance = 0.0f;
             outChance += unit->GetDodgeChance();
 
@@ -850,6 +872,12 @@ bool ImmersiveModule::OnCalculateEffectiveBlockChance(const Unit* unit, const Un
     {
         if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
+#ifdef ENABLE_PLAYERBOTS
+            // Random bots should not be affected by this
+            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+                return false;
+#endif
+
             outChance = 0.0f;
             outChance += unit->GetBlockChance();
             // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
@@ -890,6 +918,12 @@ bool ImmersiveModule::OnCalculateEffectiveParryChance(const Unit* unit, const Un
     {
         if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
+#ifdef ENABLE_PLAYERBOTS
+            // Random bots should not be affected by this
+            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+                return false;
+#endif
+
             outChance = 0.0f;
             if (attType == RANGED_ATTACK)
             {
@@ -940,6 +974,12 @@ bool ImmersiveModule::OnCalculateEffectiveCritChance(const Unit* unit, const Uni
     {
         if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
+#ifdef ENABLE_PLAYERBOTS
+            // Random bots should not be affected by this
+            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+                return false;
+#endif
+
             outChance = 0.0f;
             outChance += (ability ? unit->GetCritChance(ability, SPELL_SCHOOL_MASK_NORMAL) : unit->GetCritChance((WeaponAttackType)attType));
             
@@ -1001,6 +1041,12 @@ bool ImmersiveModule::OnCalculateEffectiveMissChance(const Unit* unit, const Uni
     {
         if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
+#ifdef ENABLE_PLAYERBOTS
+            // Random bots should not be affected by this
+            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+                return false;
+#endif
+
             outChance = 0.0f;
             outChance += (ability ? victim->GetMissChance(ability, SPELL_SCHOOL_MASK_NORMAL) : victim->GetMissChance((WeaponAttackType)attType));
             
@@ -1077,6 +1123,12 @@ bool ImmersiveModule::OnCalculateSpellMissChance(const Unit* unit, const Unit* v
     {
         if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
+#ifdef ENABLE_PLAYERBOTS
+            // Random bots should not be affected by this
+            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+                return false;
+#endif
+
             outChance = 0.0f;
             const float minimum = 1.0f; // Pre-WotLK: unavoidable spellInfo miss is at least 1%
 
@@ -1129,6 +1181,12 @@ bool ImmersiveModule::OnGetAttackDistance(const Unit* unit, const Unit* target, 
     {
         if (unit && target && (unit->IsPlayer() || target->IsPlayer()))
         {
+#ifdef ENABLE_PLAYERBOTS
+            // Random bots should not be affected by this
+            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
+                return false;
+#endif
+
             float aggroRate = sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
             uint32 playerlevel = target->GetLevelForTarget(unit);
             uint32 creaturelevel = unit->GetLevelForTarget(target);
@@ -1176,25 +1234,6 @@ bool ImmersiveModule::OnGetAttackDistance(const Unit* unit, const Unit* target, 
 
 float ImmersiveModule::GetFallDamage(Player* player, float zdist, float defaultVal)
 {
-    if (!GetConfig()->enabled || !player)
-        return defaultVal;
-
-    // Don't get extra fall damage on battlegrounds
-    if (player->InBattleGround())
-        return defaultVal;
-
-#if EXPANSION > 0
-    // Don't get extra fall damage on arenas
-    if (player->InArena())
-        return defaultVal;
-#endif
-
-#ifdef ENABLE_PLAYERBOTS
-    // Don't apply extra fall damage on bots
-    if (!player->isRealPlayer())
-        return defaultVal;
-#endif
-
     return 0.0055f * zdist * zdist * GetConfig()->fallDamageMultiplier;
 }
 
@@ -1763,12 +1802,6 @@ uint32 ImmersiveModule::CalculateEffectiveChanceDelta(const Unit* unit)
 {
     if (unit->IsPlayer())
     {
-#ifdef ENABLE_PLAYERBOTS
-        // Random bots should not be affected by this
-        if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-            return 0;
-#endif
-
         const uint32 modifier = GetModifierValue(unit->GetObjectGuid().GetCounter());
         return unit->GetLevel() * (100 - modifier) / 100;
     }
