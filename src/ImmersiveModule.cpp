@@ -669,7 +669,12 @@ bool ImmersiveModule::OnRespawn(Creature* creature)
         if (creature)
         {
             // Ignore manual respawns
-            if (!creature->IsManualRespawnScheduled())
+            const uint32 creatureId = creature->GetObjectGuid().GetCounter();
+            if (creatureRespawnScheduled.find(creatureId) != creatureRespawnScheduled.end())
+            {
+                creatureRespawnScheduled.erase(creatureId);
+            }
+            else
             {
                 Map* map = creature->GetMap();
                 if (map && !map->IsBattleGround() && (map->IsDungeon() || map->IsRaid()))
@@ -682,6 +687,18 @@ bool ImmersiveModule::OnRespawn(Creature* creature)
     }
 
     return false;
+}
+
+void ImmersiveModule::OnRespawnRequest(Creature* creature)
+{
+    if (GetConfig()->enabled && GetConfig()->disableInstanceRespawn)
+    {
+        if (creature)
+        {
+            const uint32 creatureId = creature->GetObjectGuid().GetCounter();
+            creatureRespawnScheduled.insert(creatureId);
+        }
+    }
 }
 
 bool ImmersiveModule::OnUseFishingNode(GameObject* gameObject, Player* player)

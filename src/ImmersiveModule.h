@@ -51,6 +51,7 @@ public:
 
     // Creature Hooks
     bool OnRespawn(Creature* creature) override;
+    void OnRespawnRequest(Creature* creature) override;
 
     // Game Object Hooks
     bool OnUseFishingNode(GameObject* gameObject, Player* player) override;
@@ -96,6 +97,7 @@ private:
     static std::map<uint8, std::string> statValues;
     std::map< uint32, std::map<std::string, uint32> > valueCache;
     uint32 updateDelay;
+    std::unordered_set<uint32> creatureRespawnScheduled;
 };
 
 static ImmersiveModule immersiveModule;
