@@ -817,18 +817,25 @@ bool ImmersiveModule::OnUseFishingNode(GameObject* gameObject, Player* player)
     return false;
 }
 
+#ifdef ENABLE_PLAYERBOTS
+bool IsRandomBot(const Unit* unit)
+{
+    if (unit && unit->IsPlayer())
+    {
+        Player* player = (Player*)unit;
+        return !player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player);
+    }
+
+    return false;
+}
+#endif
+
 bool ImmersiveModule::OnCalculateEffectiveDodgeChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float& outChance)
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
         if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
-#ifdef ENABLE_PLAYERBOTS
-            // Random bots should not be affected by this
-            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-                return false;
-#endif
-
             outChance = 0.0f;
             outChance += unit->GetDodgeChance();
 
@@ -869,12 +876,6 @@ bool ImmersiveModule::OnCalculateEffectiveBlockChance(const Unit* unit, const Un
     {
         if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
-#ifdef ENABLE_PLAYERBOTS
-            // Random bots should not be affected by this
-            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-                return false;
-#endif
-
             outChance = 0.0f;
             outChance += unit->GetBlockChance();
             // Own chance appears to be zero / below zero / unmeaningful for some reason (debuffs?): skip calculation, unit is incapable
@@ -915,12 +916,6 @@ bool ImmersiveModule::OnCalculateEffectiveParryChance(const Unit* unit, const Un
     {
         if (unit && attacker && (unit->IsPlayer() || attacker->IsPlayer()))
         {
-#ifdef ENABLE_PLAYERBOTS
-            // Random bots should not be affected by this
-            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-                return false;
-#endif
-
             outChance = 0.0f;
             if (attType == RANGED_ATTACK)
             {
@@ -971,12 +966,6 @@ bool ImmersiveModule::OnCalculateEffectiveCritChance(const Unit* unit, const Uni
     {
         if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
-#ifdef ENABLE_PLAYERBOTS
-            // Random bots should not be affected by this
-            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-                return false;
-#endif
-
             outChance = 0.0f;
             outChance += (ability ? unit->GetCritChance(ability, SPELL_SCHOOL_MASK_NORMAL) : unit->GetCritChance((WeaponAttackType)attType));
             
@@ -1038,12 +1027,6 @@ bool ImmersiveModule::OnCalculateEffectiveMissChance(const Unit* unit, const Uni
     {
         if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
-#ifdef ENABLE_PLAYERBOTS
-            // Random bots should not be affected by this
-            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-                return false;
-#endif
-
             outChance = 0.0f;
             outChance += (ability ? victim->GetMissChance(ability, SPELL_SCHOOL_MASK_NORMAL) : victim->GetMissChance((WeaponAttackType)attType));
             
@@ -1120,12 +1103,6 @@ bool ImmersiveModule::OnCalculateSpellMissChance(const Unit* unit, const Unit* v
     {
         if (unit && victim && (unit->IsPlayer() || victim->IsPlayer()))
         {
-#ifdef ENABLE_PLAYERBOTS
-            // Random bots should not be affected by this
-            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-                return false;
-#endif
-
             outChance = 0.0f;
             const float minimum = 1.0f; // Pre-WotLK: unavoidable spellInfo miss is at least 1%
 
@@ -1178,12 +1155,6 @@ bool ImmersiveModule::OnGetAttackDistance(const Unit* unit, const Unit* target, 
     {
         if (unit && target && (unit->IsPlayer() || target->IsPlayer()))
         {
-#ifdef ENABLE_PLAYERBOTS
-            // Random bots should not be affected by this
-            if (!((Player*)unit)->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot((Player*)unit))
-                return false;
-#endif
-
             float aggroRate = sWorld.getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
             uint32 playerlevel = target->GetLevelForTarget(unit);
             uint32 creaturelevel = unit->GetLevelForTarget(target);
@@ -1799,6 +1770,11 @@ uint32 ImmersiveModule::CalculateEffectiveChanceDelta(const Unit* unit)
 {
     if (unit->IsPlayer())
     {
+#ifdef ENABLE_PLAYERBOTS
+        // Random bots stats should not be affected
+        if (IsRandomBot(unit))
+            return 0;
+#endif
         const uint32 modifier = GetModifierValue(unit->GetObjectGuid().GetCounter());
         return unit->GetLevel() * (100 - modifier) / 100;
     }
