@@ -1,5 +1,5 @@
-#ifndef _IMMERSIVE_H
-#define _IMMERSIVE_H
+#ifndef MANGOS_IMMERSIVE_MODULE_H
+#define MANGOS_IMMERSIVE_MODULE_H
 
 #include "Module.h"
 #include "ImmersiveModuleConfig.h"
@@ -45,7 +45,7 @@ public:
     void OnSetReputation(Player* player, const FactionEntry* factionEntry, int32 standing, bool incremental) override;
     void OnRewardQuest(Player* player, const Quest* quest) override;
     void OnGossipHello(Player* player, Creature* creature) override;
-    bool OnPreGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId) override;
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId) override;
     void OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info) override;
 
     // Creature Hooks

@@ -1,15 +1,13 @@
 SET @TEXT_ID := 50800;
-DELETE FROM `npc_text` WHERE `ID` in (@TEXT_ID, @TEXT_ID+1, @TEXT_ID+2);
+DELETE FROM `npc_text` WHERE `ID` in (@TEXT_ID, @TEXT_ID+1);
 INSERT INTO `npc_text` (`ID`, `text0_0`) VALUES
 (@TEXT_ID, "Ah, $N, it appears our journey has brought us to this crucial point. Let's review your attributes to ensure you are prepared for the challenges ahead."),
-(@TEXT_ID+1, "Are you sure you want to unlearn all your attributes?"),
-(@TEXT_ID+2, "Interesting... Reducing your attributes will make your experience more challenging. Are you sure?");
+(@TEXT_ID+1, "Interesting... Reducing your attributes will make your experience more challenging. Are you sure?");
 
-DELETE FROM `locales_npc_text` WHERE `entry` in (@TEXT_ID, @TEXT_ID+1, @TEXT_ID+2);
+DELETE FROM `locales_npc_text` WHERE `entry` in (@TEXT_ID, @TEXT_ID+1);
 INSERT INTO `locales_npc_text` (`entry`, `text0_0_loc6`) VALUES
 (@TEXT_ID, "Ah, $N, parece que nuestro viaje nos ha llevado a este punto crucial. Revisemos tus atributos para asegurarnos de que estas preparados para los desafíos que se avecinan."),
-(@TEXT_ID+1, "¿Estás seguro de que quieres reiniciar todos tus atributos?"),
-(@TEXT_ID+2, "Interesante... Reducir tus atributos hará que tu experiencia sea más desafiante. ¿Estas seguro?");
+(@TEXT_ID+1, "Interesante... Reducir tus atributos hará que tu experiencia sea más desafiante. ¿Estas seguro?");
 
 SET @STRING_ENTRY := 12100;
 DELETE FROM `mangos_string` WHERE `entry` BETWEEN  @STRING_ENTRY AND @STRING_ENTRY+29;
@@ -36,11 +34,11 @@ INSERT INTO `mangos_string` (`entry`, `content_default`, `content_loc6`) VALUES
 (@STRING_ENTRY+19, '%s gained', '%s ganado'),
 (@STRING_ENTRY+20, '%u reputation gained', '%u reputación ganada'),
 (@STRING_ENTRY+21, '%s completed', '%s completado'),
-(@STRING_ENTRY+22, 'Manage attributes', 'Administrat atributos'),
+(@STRING_ENTRY+22, 'Manage attributes', 'Administrar atributos'),
 (@STRING_ENTRY+23, 'Check current attributes', 'Ver atributos actuales'),
 (@STRING_ENTRY+24, 'Improve %s', 'Mejorar %s'),
 (@STRING_ENTRY+25, 'Unlearn all attributes', 'Reiniciar todos los atributos'),
 (@STRING_ENTRY+26, 'I am sure I do want to unlearn all attributes', 'Estoy seguro que quiero reiniciar mis atributos'),
 (@STRING_ENTRY+27, 'Temporarily reduce attributes', 'Reducir los atributos temporalmente'),
 (@STRING_ENTRY+28, 'Remove attribute reductions', 'Quitar reducción de atributos'),
-(@STRING_ENTRY+29, 'Reduce by u%', 'Reducir un u%');
+(@STRING_ENTRY+29, 'Reduce by %s', 'Reducir un %s');

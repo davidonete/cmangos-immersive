@@ -1,6 +1,6 @@
 SET @TEXT_ID := 50800;
-DELETE FROM `npc_text` WHERE `ID` in (@TEXT_ID, @TEXT_ID+1, @TEXT_ID+2);
-DELETE FROM `locales_npc_text` WHERE `entry` in (@TEXT_ID, @TEXT_ID+1, @TEXT_ID+2);
+DELETE FROM `npc_text` WHERE `ID` in (@TEXT_ID, @TEXT_ID+1);
+DELETE FROM `locales_npc_text` WHERE `entry` in (@TEXT_ID, @TEXT_ID+1);
 
 SET @STRING_ENTRY := 12100;
 DELETE FROM `mangos_string` WHERE `entry` BETWEEN  @STRING_ENTRY AND @STRING_ENTRY+29;

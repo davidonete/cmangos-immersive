@@ -562,16 +562,13 @@ void ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
             if (!creature->IsTrainerOf(player, false))
                 return;
 
-            player->GetPlayerMenu()->ClearMenus();
-
             const std::string manageAtributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MANAGE);
-            player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, manageAtributesStr, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF, "", false);
+            player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, manageAtributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_MENU, "", false);
         }
-
     }
 }
 
-bool ImmersiveModule::OnPreGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId)
+bool ImmersiveModule::OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId)
 {
     if (GetConfig()->enabled && GetConfig()->manualAttributes)
     {
@@ -583,6 +580,95 @@ bool ImmersiveModule::OnPreGossipSelect(Player* player, Creature* creature, uint
 
             player->GetPlayerMenu()->ClearMenus();
 
+            switch (action)
+            {
+                case IMMERSIVE_GOSSIP_OPTION_MENU:
+                {
+                    const std::string checkAtributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_CHECK_CURRENT);
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, checkAtributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_CHECK_CURRENT, "", false);
+                    const std::string improveAttributeStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_IMPROVE);
+                    const std::string improveStrengthStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH));
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveStrengthStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_STRENGTH, "", false);
+                    const std::string improveAgilityStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AGILITY));
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveAgilityStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_AGILITY, "", false);
+                    const std::string improveStaminaStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STAMINA));
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveStaminaStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_STAMINA, "", false);
+                    const std::string improveIntellectStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_INTELLECT));
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveIntellectStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_INTELLECT, "", false);
+                    const std::string improveSpiritStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SPIRIT));
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveSpiritStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_SPIRIT, "", false);
+                    const std::string resetAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN);
+                    const std::string resetAttributesAreYouSureStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN_SURE);
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, resetAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_RESET_STATS, resetAttributesAreYouSureStr, false);
+                    const std::string reduceAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE);
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduceAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_MENU, "", false);
+                    player->GetPlayerMenu()->SendGossipMenu(IMMERSIVE_NPC_TEXT, creature->GetObjectGuid());
+                    break;
+                }
+
+                case IMMERSIVE_GOSSIP_OPTION_IMPROVE_STRENGTH:
+                case IMMERSIVE_GOSSIP_OPTION_IMPROVE_AGILITY:
+                case IMMERSIVE_GOSSIP_OPTION_IMPROVE_STAMINA:
+                case IMMERSIVE_GOSSIP_OPTION_IMPROVE_INTELLECT:
+                case IMMERSIVE_GOSSIP_OPTION_IMPROVE_SPIRIT:
+                {
+                    IncreaseStat(player, action - IMMERSIVE_GOSSIP_OPTION_IMPROVE_STRENGTH);
+                    OnGossipSelect(player, creature, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_MENU, "", gossipListId);
+                    break;
+                }
+
+                case IMMERSIVE_GOSSIP_OPTION_RESET_STATS:
+                {
+                    ResetStats(player);
+                    OnGossipSelect(player, creature, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_MENU, "", gossipListId);
+                    break;
+                }
+
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_MENU:
+                {
+                    const std::string removeReductionStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_REMOVE);
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, removeReductionStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_0, "", false);
+                    const std::string reduceStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_PCT);
+                    const std::string reduce10PctStr = FormatString(reduceStr.c_str(), "10%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce10PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_10, "", false);
+                    const std::string reduce20PctStr = FormatString(reduceStr.c_str(), "20%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce20PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_20, "", false);
+                    const std::string reduce30PctStr = FormatString(reduceStr.c_str(), "30%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce30PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_30, "", false);
+                    const std::string reduce40PctStr = FormatString(reduceStr.c_str(), "40%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce40PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_40, "", false);
+                    const std::string reduce50PctStr = FormatString(reduceStr.c_str(), "50%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce50PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_50, "", false);
+                    const std::string reduce60PctStr = FormatString(reduceStr.c_str(), "60%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce60PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_60, "", false);
+                    const std::string reduce70PctStr = FormatString(reduceStr.c_str(), "70%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce70PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_70, "", false);
+                    const std::string reduce80PctStr = FormatString(reduceStr.c_str(), "80%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce80PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_80, "", false);
+                    const std::string reduce90PctStr = FormatString(reduceStr.c_str(), "90%");
+                    player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce90PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_90, "", false);
+                    player->GetPlayerMenu()->SendGossipMenu(IMMERSIVE_REDUCE_ATTR_TEXT, creature->GetObjectGuid());
+                    break;
+                }
+
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_0:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_10:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_20:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_30:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_40:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_50:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_60:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_70:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_80:
+                case IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_90:
+                {
+                    ChangeModifier(player, action - IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_0);
+                    OnGossipSelect(player, creature, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_MENU, "", gossipListId);
+                    break;
+                }
+
+                default: break;
+            }
 
             return true;
         }
