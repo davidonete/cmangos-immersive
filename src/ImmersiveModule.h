@@ -11,7 +11,7 @@ class ImmersiveModule;
 class ImmersiveAction
 {
 public:
-    ImmersiveAction(ImmersiveModuleConfig* config) : config(config) {}
+    ImmersiveAction(const ImmersiveModuleConfig* config) : config(config) {}
 
 public:
     virtual bool Run(Player* player, Player* bot) = 0;
@@ -22,7 +22,7 @@ protected:
     virtual bool CheckSharedPercentReqsSingle(Player* player, Player* bot);
 
 protected:
-    ImmersiveModuleConfig* config;
+    const ImmersiveModuleConfig* config;
 };
 
 class ImmersiveModule : public Module

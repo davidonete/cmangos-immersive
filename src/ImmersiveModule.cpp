@@ -288,7 +288,7 @@ uint32 ApplyRandomPercent(uint32 value, ImmersiveModuleConfig* config)
 class OnGiveXPAction : public ImmersiveAction
 {
 public:
-    OnGiveXPAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
+    OnGiveXPAction(int32 value, const ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
 
     bool Run(Player* player, Player* bot) override
     {
@@ -376,7 +376,7 @@ void ImmersiveModule::OnGiveLevel(Player* player, uint32 level)
 class OnGiveMoneyAction : public ImmersiveAction
 {
 public:
-    OnGiveMoneyAction(int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
+    OnGiveMoneyAction(int32 value, const ImmersiveModuleConfig* config) : ImmersiveAction(config), value(value) {}
 
     bool Run(Player* player, Player* bot) override
     {
@@ -431,7 +431,7 @@ void ImmersiveModule::OnModifyMoney(Player* player, int32 diff)
 class OnReputationChangeAction : public ImmersiveAction
 {
 public:
-    OnReputationChangeAction(FactionEntry const* factionEntry, int32 value, ImmersiveModuleConfig* config) : ImmersiveAction(config), factionEntry(factionEntry), value(value) {}
+    OnReputationChangeAction(FactionEntry const* factionEntry, int32 value, const ImmersiveModuleConfig* config) : ImmersiveAction(config), factionEntry(factionEntry), value(value) {}
 
     bool Run(Player* player, Player* bot) override
     {
@@ -488,7 +488,7 @@ void ImmersiveModule::OnSetReputation(Player* player, FactionEntry const* factio
 class OnRewardQuestAction : public ImmersiveAction
 {
 public:
-    OnRewardQuestAction(Quest const* quest, ImmersiveModuleConfig* config) : ImmersiveAction(config), quest(quest) {}
+    OnRewardQuestAction(Quest const* quest, const ImmersiveModuleConfig* config) : ImmersiveAction(config), quest(quest) {}
 
     bool Run(Player* player, Player* bot) override
     {
