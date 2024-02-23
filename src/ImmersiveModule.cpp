@@ -277,7 +277,7 @@ void ImmersiveModule::OnResurrect(Player* player)
     }
 }
 
-uint32 ApplyRandomPercent(uint32 value, ImmersiveModuleConfig* config)
+uint32 ApplyRandomPercent(uint32 value, const ImmersiveModuleConfig* config)
 {
     if (!config->enabled || !config->sharedRandomPercent) return value;
     float percent = (float)urand(0, config->sharedRandomPercent) - (float)config->sharedRandomPercent / 2;
