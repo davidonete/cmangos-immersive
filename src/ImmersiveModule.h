@@ -4,12 +4,12 @@
 #include "Module.h"
 #include "ImmersiveModuleConfig.h"
 
+struct PlayerInfo;
+
+class ImmersiveModule;
+
 namespace immersive_module
 {
-    struct PlayerInfo;
-
-    class ImmersiveModule;
-
     class ImmersiveAction
     {
     public:
