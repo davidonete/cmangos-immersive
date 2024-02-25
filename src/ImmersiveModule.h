@@ -55,7 +55,7 @@ namespace immersive_module
         void OnRespawnRequest(Creature* creature) override;
 
         // Game Object Hooks
-        bool OnUseFishingNode(GameObject* gameObject, Player* player) override;
+        bool OnUse(GameObject* gameObject, Unit* user) override;
 
         // Unit Hooks
         bool OnCalculateEffectiveDodgeChance(const Unit* unit, const Unit* attacker, uint8 attType, const SpellEntry* ability, float& outChance) override;

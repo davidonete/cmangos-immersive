@@ -755,12 +755,13 @@ namespace immersive_module
         }
     }
 
-    bool ImmersiveModule::OnUseFishingNode(GameObject* gameObject, Player* player)
+    bool ImmersiveModule::OnUse(GameObject* gameObject, Unit* user)
     {
         if (GetConfig()->enabled && GetConfig()->fishingBaubles)
         {
-            if (gameObject && player)
+            if (gameObject && gameObject->GetGoType() == GAMEOBJECT_TYPE_FISHINGNODE && user && user->IsPlayer())
             {
+                Player* player = (Player*)user;
                 if (gameObject->GetLootState() == GO_READY)
                 {
                     // 1) skill must be >= base_zone_skill
