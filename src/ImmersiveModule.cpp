@@ -85,7 +85,7 @@ namespace immersive_module
         if (unit && unit->IsPlayer())
         {
             Player* player = (Player*)unit;
-            return !player->isRealPlayer() && sRandomPlayerbotMgr.IsFreeBot(player);
+            return sRandomPlayerbotMgr.IsFreeBot(player);
         }
 
         return false;
