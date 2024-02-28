@@ -7,6 +7,7 @@
 #include "Globals/SharedDefines.h"
 #include "Globals/ObjectMgr.h"
 #include "Log.h"
+#include "Spells/SpellMgr.h"
 #include "Tools/Language.h"
 #include "World/World.h"
 
