@@ -1049,7 +1049,11 @@ namespace immersive_module
 
                 // Victim's crit taken chance
                 const SpellDmgClass dmgClass = (ranged ? SPELL_DAMAGE_CLASS_RANGED : SPELL_DAMAGE_CLASS_MELEE);
+#if EXPANSION == 2
+                outChance += victim->GetCritTakenChance(unit, SPELL_SCHOOL_MASK_NORMAL, dmgClass, ability);
+#else
                 outChance += victim->GetCritTakenChance(SPELL_SCHOOL_MASK_NORMAL, dmgClass);
+#endif
                 for (auto i : unit->GetScriptedLocationAuras(SCRIPT_LOCATION_CRIT_CHANCE))
                 {
                     if (!i->isAffectedOnSpell(ability))
