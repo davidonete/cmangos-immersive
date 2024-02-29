@@ -1,4 +1,4 @@
-# Immersive Mod
+# Immersive
 Immersive mod for cmangos core which will increases roleplay aspect of the game.
 The mod comes with the following features:
 - Manual attributes: Set up the attributes of your character (stamina, strenght, intellect, spirit and agility) manually on a class trainer instead of automatically when leveling up
@@ -9,6 +9,9 @@ The mod comes with the following features:
 - Disable respawn: Mobs and gameobjects of an instance won't respawn until the instance is reset
 
 This mod was ported from https://github.com/ike3/mangosbot-immersive and modified to become a independent module as well as adding extra features.
+
+# Available Cores
+Classic, TBC and WoTLK
 
 # How to install
 1. Follow the instructions in https://github.com/davidonete/cmangos-modules?tab=readme-ov-file#how-to-install
