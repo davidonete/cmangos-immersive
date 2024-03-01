@@ -135,7 +135,7 @@ namespace immersive_module
         }
     }
 
-    bool ImmersiveModule::OnHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ)
+    bool ImmersiveModule::OnPreHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ, uint32& outDamage)
     {
         if (GetConfig()->enabled)
         {
@@ -194,15 +194,15 @@ namespace immersive_module
                                 damage = player->GetMaxHealth() / 2;
                             }
 
-                            player->EnvironmentalDamage(DAMAGE_FALL, damage);
+                            outDamage = player->EnvironmentalDamage(DAMAGE_FALL, damage);
                         }
 
                         // Z given by moveinfo, LastZ, FallTime, WaterZ, MapZ, Damage, Safefall reduction
                         DEBUG_LOG("FALLDAMAGE z=%f sz=%f pZ=%f FallTime=%d mZ=%f damage=%d SF=%d", position.z, height, player->GetPositionZ(), movementInfo.GetFallTime(), height, damage, safe_fall);
+
+                        return true;
                     }
                 }
-
-                return true;
             }
         }
 

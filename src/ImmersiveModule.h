@@ -39,7 +39,7 @@ namespace immersive_module
         void OnUpdate(uint32 elapsed) override;
 
         // Player Hooks
-        bool OnHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ) override;
+        bool OnPreHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ, uint32& outDamage) override;
         void OnResurrect(Player* player) override;
         void OnGiveXP(Player* player, uint32 xp, Creature* victim) override;
         void OnGiveLevel(Player* player, uint32 level) override;
