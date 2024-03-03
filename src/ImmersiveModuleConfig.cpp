@@ -25,6 +25,8 @@ ImmersiveModuleConfig::ImmersiveModuleConfig()
 , scaleModifierWorkaround(false)
 , sharedRandomPercent(0)
 , disableOfflineRespawn(false)
+, infiniteLeveling(false)
+, infiniteLevelingMax(0)
 {
 
 }
@@ -54,5 +56,7 @@ bool ImmersiveModuleConfig::OnLoad()
     sharedRandomPercent = config.GetIntDefault("Immersive.SharedRandomPercent", 0);
     disableOfflineRespawn = config.GetBoolDefault("Immersive.DisableOfflineRespawn", false);
     disableInstanceRespawn = config.GetBoolDefault("Immersive.DisableInstanceRespawn", false);
+    infiniteLeveling = config.GetBoolDefault("Immersive.InfiniteLeveling", false);
+    infiniteLevelingMax = config.GetIntDefault("Immersive.InfiniteLevelingMax", 100);
     return true;
 }

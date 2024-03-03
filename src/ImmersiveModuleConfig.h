@@ -104,5 +104,7 @@ public:
     uint32 sharedRandomPercent;
     bool disableOfflineRespawn;
     bool disableInstanceRespawn;
+    bool infiniteLeveling;
+    uint32 infiniteLevelingMax;
 };
 

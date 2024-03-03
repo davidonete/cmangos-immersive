@@ -38,6 +38,9 @@ namespace immersive_module
         void OnInitialize() override;
         void OnUpdate(uint32 elapsed) override;
 
+        // World Hooks
+        void OnWorldPreInitialized() override;
+
         // Player Hooks
         bool OnPreHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ, uint32& outDamage) override;
         void OnResurrect(Player* player) override;
@@ -49,6 +52,7 @@ namespace immersive_module
         void OnGossipHello(Player* player, Creature* creature) override;
         bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId) override;
         void OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info) override;
+        bool OnPreRewardPlayerAtKill(Player* player, Unit* victim) override;
 
         // Creature Hooks
         bool OnRespawn(Creature* creature, time_t& respawnTime) override;

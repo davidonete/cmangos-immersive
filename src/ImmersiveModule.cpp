@@ -8,6 +8,7 @@
 #include "Globals/ObjectMgr.h"
 #include "Log.h"
 #include "Spells/SpellMgr.h"
+#include "Tools/Formulas.h"
 #include "Tools/Language.h"
 #include "World/World.h"
 
@@ -21,7 +22,7 @@ namespace immersive_module
 {
     bool IsMaxLevel(Player* player)
     {
-        return player && player->GetLevel() >= 60 + (10 * EXPANSION);
+        return player && player->GetLevel() >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
     }
 
     std::string formatMoney(uint32 copper)
@@ -131,6 +132,25 @@ namespace immersive_module
                     updateDelay = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
                     SetStatsValue(0, "last_ping", sWorld.GetGameTime());
                 }
+            }
+        }
+    }
+
+    void ImmersiveModule::OnWorldPreInitialized()
+    {
+        if (GetConfig()->enabled)
+        {
+            if (GetConfig()->infiniteLeveling)
+            {
+                uint32 newMaxLevel = GetConfig()->infiniteLevelingMax;
+                if (newMaxLevel < DEFAULT_MAX_LEVEL || newMaxLevel > MAX_LEVEL)
+                {
+                    newMaxLevel = newMaxLevel > MAX_LEVEL ? MAX_LEVEL : newMaxLevel;
+                    newMaxLevel = newMaxLevel < DEFAULT_MAX_LEVEL ? DEFAULT_MAX_LEVEL : newMaxLevel;
+                    sLog.outError("Immersive.InfiniteLevelingMax must be between %u and %u. Using %u instead.", DEFAULT_MAX_LEVEL, MAX_LEVEL, newMaxLevel);
+                }
+
+                sWorld.setConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL, newMaxLevel);
             }
         }
     }
@@ -356,22 +376,37 @@ namespace immersive_module
 
     void ImmersiveModule::OnGiveLevel(Player* player, uint32 level)
     {
-        if (GetConfig()->enabled && GetConfig()->manualAttributes)
+        if (GetConfig()->enabled)
         {
-    #ifdef ENABLE_PLAYERBOTS
-            if (!player->isRealPlayer())
-                return;
-    #endif
+            if (GetConfig()->manualAttributes)
+            {
+#ifdef ENABLE_PLAYERBOTS
+                if (!player->isRealPlayer())
+                    return;
+#endif
 
-        const uint32 usedStats = GetUsedStats(player);
-        const uint32 totalStats = GetTotalStats(player);
-        const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
-        if (availablePoints > 0)
-        {
-            SendSysMessage(player, FormatString(
-                sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
-                availablePoints));
-        }
+                const uint32 usedStats = GetUsedStats(player);
+                const uint32 totalStats = GetTotalStats(player);
+                const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
+                if (availablePoints > 0)
+                {
+                    SendSysMessage(player, FormatString(
+                        sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
+                        availablePoints));
+                }
+            }
+
+            if (GetConfig()->infiniteLeveling)
+            {
+                if (level > DEFAULT_MAX_LEVEL && level <= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+                {
+                    constexpr float increaseRate = 0.04f;
+                    const uint32 levelsAboveMax = level - DEFAULT_MAX_LEVEL;
+                    uint32 nextLevelXP = sObjectMgr.GetXPForLevel(DEFAULT_MAX_LEVEL);
+                    nextLevelXP = (uint32)(nextLevelXP * std::pow(1 + increaseRate, levelsAboveMax));
+                    player->SetUInt32Value(PLAYER_NEXT_LEVEL_XP, nextLevelXP);
+                }
+            }
         }
     }
 
@@ -713,6 +748,84 @@ namespace immersive_module
                 info.stats[i] += GetStatsValue(owner, (Stats)i) * modifier / 100;
             }
         }
+    }
+
+    uint32 XPGain(const Unit* unit, Creature* target)
+    {
+        if (!target->IsTotem() && !target->IsPet() && !target->IsNoXp() && !target->IsCritter())
+        {
+            float xpGain = 0.0f;
+            const uint32 unitLevel = unit->GetLevel();
+            const uint32 targetLevel = target->GetLevel();
+            const uint32 nBaseExp = unitLevel * 5 + 45;
+            if (targetLevel >= unitLevel)
+            {
+                uint32 nLevelDiff = targetLevel - unitLevel;
+                nLevelDiff = nLevelDiff > 4 ? 4 : nLevelDiff;
+                xpGain = nBaseExp * (1.0f + (0.05f * nLevelDiff));
+            }
+            else
+            {
+                uint32 nLevelDiff = DEFAULT_MAX_LEVEL > targetLevel ? DEFAULT_MAX_LEVEL - targetLevel : 1;
+                xpGain = nBaseExp * (1.0f - (float(nLevelDiff) / 17));
+            }
+
+            if (xpGain > 0.0f)
+            {
+                if (target->IsElite())
+                {
+                    if (target->GetMap()->IsRaid())
+                    {
+                        // Raid boss
+                        const CreatureInfo* creatureInfo = target->GetCreatureInfo();
+                        if (creatureInfo && creatureInfo->Rank == CREATURE_ELITE_WORLDBOSS)
+                        {
+                            xpGain *= 10.0f;
+                        }
+                    }
+                    else if (target->GetMap()->IsDungeon())
+                    {
+                        // Dungeon boss
+                        if (sObjectMgr.IsEncounter(target->GetEntry(), target->GetMapId()))
+                        {
+                            xpGain *= 5.0f;
+                        }
+                    }
+                }
+
+                xpGain *= target->GetCreatureInfo()->ExperienceMultiplier;
+                xpGain = target->GetModifierXpBasedOnDamageReceived(xpGain);
+                return (uint32)(std::nearbyint(xpGain * sWorld.getConfig(CONFIG_FLOAT_RATE_XP_KILL)));
+            }
+        }
+
+        return 0;
+    }
+
+    bool ImmersiveModule::OnPreRewardPlayerAtKill(Player* player, Unit* victim)
+    {
+        // Check if the player is on the range between the expansion max level and the set max level
+        const uint32 playerLevel = player->GetLevel();
+        if (playerLevel >= DEFAULT_MAX_LEVEL && playerLevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+        {
+            if (victim->IsCreature() && !victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+            {
+                if (victim->GetLevel() > DEFAULT_MAX_LEVEL - 5)
+                {
+                    // Calculate the exp given (formula from MaNGOS::XP::Gain)
+                    Creature* creatureVictim = (Creature*)victim;
+                    player->GiveXP(XPGain(player, creatureVictim), creatureVictim);
+                    if (Pet* pet = player->GetPet())
+                    {
+                        pet->GivePetXP(XPGain(pet, creatureVictim));
+                    }
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     bool ImmersiveModule::OnRespawn(Creature* creature, time_t& respawnTime)
@@ -1543,7 +1656,6 @@ namespace immersive_module
 
     uint32 ImmersiveModule::GetTotalStats(Player *player, uint8 level)
     {
-        constexpr uint8 maxLvl = 60;
         if (!level) 
         {
             level = player->GetLevel();
@@ -1561,7 +1673,7 @@ namespace immersive_module
                 base += level1Info.stats[i];
             }
 
-            return (uint32)((level * (maxStats - base)) / maxLvl);
+            return (uint32)((level * (maxStats - base)) / sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
         }
         else
         {
@@ -1575,9 +1687,14 @@ namespace immersive_module
                 total += ((int)levelCInfo.stats[i] - (int)level1Info.stats[i]);
             }
 
-            if(level >= maxLvl)
+            if (level >= DEFAULT_MAX_LEVEL)
             {
                 total += 5;
+            }
+
+            if (level > DEFAULT_MAX_LEVEL)
+            {
+                total += (level - DEFAULT_MAX_LEVEL) * 2;
             }
 
             uint32 byPercent = (uint32)floor(total * GetConfig()->manualAttributesPercent / 100.0f);
