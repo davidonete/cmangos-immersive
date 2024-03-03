@@ -107,4 +107,3 @@ public:
     bool infiniteLeveling;
     uint32 infiniteLevelingMax;
 };
-
