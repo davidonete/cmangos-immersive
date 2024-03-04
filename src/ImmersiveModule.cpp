@@ -818,7 +818,7 @@ namespace immersive_module
                         // Raid non-elite creature
                         else
                         {
-                            xpGain *= 1.0f;
+                            xpGain *= 0.25f;
                         }
                     }
                     else if (dungeonMap->IsDungeon())
@@ -839,7 +839,7 @@ namespace immersive_module
                         // Dungeon non-elite creature
                         else
                         {
-                            xpGain *= 1.0f;
+                            xpGain *= 0.25f;
                         }
                     }
 
@@ -927,10 +927,17 @@ namespace immersive_module
                 {
                     // Calculate the exp given (formula from MaNGOS::XP::Gain)
                     Player* playerVictim = (Player*)victim;
-                    player->GiveXP(XPGain(player, playerVictim), nullptr);
-                    if (Pet* pet = player->GetPet())
+
+                    // Only consider kills for players with 3 levels differences
+                    const uint32 playerLevel = GetConfig()->infiniteLeveling && player->GetLevel() > DEFAULT_MAX_LEVEL + 1 ? DEFAULT_MAX_LEVEL : player->GetLevel();
+                    const uint32 victimLevel = GetConfig()->infiniteLeveling && playerVictim->GetLevel() > DEFAULT_MAX_LEVEL + 1 ? DEFAULT_MAX_LEVEL : playerVictim->GetLevel();
+                    if (playerLevel <= victimLevel + 3)
                     {
-                        pet->GivePetXP(XPGain(pet, nullptr));
+                        player->GiveXP(XPGain(player, playerVictim), nullptr);
+                        if (Pet* pet = player->GetPet())
+                        {
+                            pet->GivePetXP(XPGain(pet, nullptr));
+                        }
                     }
                 }
             }
