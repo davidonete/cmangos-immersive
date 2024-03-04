@@ -151,6 +151,8 @@ namespace immersive_module
                 }
 
                 sWorld.setConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL, newMaxLevel);
+
+                WorldDatabase.PExecute("UPDATE `battleground_template` SET `MaxLvl`='%u';", newMaxLevel);
             }
         }
     }
@@ -852,9 +854,15 @@ namespace immersive_module
             else if (playerTarget)
             {
                 // BG player kill
+                uint32 maxPlayers = 1;
                 if (player->InBattleGround())
                 {
-                    xpGain *= 1.0f;
+                    BattleGround* bg = player->GetBattleGround();
+                    if (bg)
+                    {
+                        maxPlayers = bg->GetMaxPlayers();
+                        xpGain *= 2.0f;
+                    }
                 }
 #if EXPANSION > 0
                 // Arena player kill
@@ -868,6 +876,8 @@ namespace immersive_module
                 {
                     xpGain *= 1.0f;
                 }
+
+                xpGain *= maxPlayers;
             }
 
             xpGain *= sWorld.getConfig(CONFIG_FLOAT_RATE_XP_KILL);
