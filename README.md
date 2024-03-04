@@ -7,6 +7,8 @@ The mod comes with the following features:
 - Fishing Baubles: Require a fishing bauble in order to be able to fish
 - Fall damage: Increase the fall damage at will
 - Disable respawn: Mobs and gameobjects of an instance won't respawn until the instance is reset
+- Infinite leveling: Allow leveling past the level cap (max 100) and receive talents and attributes as you go
+- Pvp Experience: Get experience when killing enemy players
 
 This mod was ported from https://github.com/ike3/mangosbot-immersive and modified to become a independent module as well as adding extra features.
 
