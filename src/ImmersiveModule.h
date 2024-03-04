@@ -53,6 +53,7 @@ namespace immersive_module
         bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId) override;
         void OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info) override;
         bool OnPreRewardPlayerAtKill(Player* player, Unit* victim) override;
+        void OnRewardPlayerAtKill(Player* player, Unit* victim) override;
 
         // Creature Hooks
         bool OnRespawn(Creature* creature, time_t& respawnTime) override;

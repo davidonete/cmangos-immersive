@@ -887,54 +887,54 @@ namespace immersive_module
 
     bool ImmersiveModule::OnPreRewardPlayerAtKill(Player* player, Unit* victim)
     {
-        if (GetConfig()->enabled)
+        if (GetConfig()->enabled && GetConfig()->infiniteLeveling)
         {
             if (player && victim)
             {
-                if (GetConfig()->infiniteLeveling)
+                // Check if the player is on the range between the expansion max level and the set max level
+                const uint32 playerLevel = player->GetLevel();
+                if (playerLevel >= DEFAULT_MAX_LEVEL && playerLevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
                 {
-                    // Check if the player is on the range between the expansion max level and the set max level
-                    const uint32 playerLevel = player->GetLevel();
-                    if (playerLevel >= DEFAULT_MAX_LEVEL && playerLevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+                    if (victim->IsCreature() && !victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
                     {
-                        if (victim->IsCreature() && !victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                        if (victim->GetLevel() > DEFAULT_MAX_LEVEL - 5)
                         {
-                            if (victim->GetLevel() > DEFAULT_MAX_LEVEL - 5)
+                            // Calculate the exp given (formula from MaNGOS::XP::Gain)
+                            Creature* creatureVictim = (Creature*)victim;
+                            player->GiveXP(XPGain(player, creatureVictim), creatureVictim);
+                            if (Pet* pet = player->GetPet())
                             {
-                                // Calculate the exp given (formula from MaNGOS::XP::Gain)
-                                Creature* creatureVictim = (Creature*)victim;
-                                player->GiveXP(XPGain(player, creatureVictim), creatureVictim);
-                                if (Pet* pet = player->GetPet())
-                                {
-                                    pet->GivePetXP(XPGain(pet, creatureVictim));
-                                }
-
-                                return true;
+                                pet->GivePetXP(XPGain(pet, creatureVictim));
                             }
+
+                            return true;
                         }
-
-                    }
-                }
-
-                if (GetConfig()->xpOnPvPKill)
-                {
-                    if (victim->IsPlayer() && player->IsAlive())
-                    {
-                        // Calculate the exp given (formula from MaNGOS::XP::Gain)
-                        Player* playerVictim = (Player*)victim;
-                        player->GiveXP(XPGain(player, playerVictim), nullptr);
-                        if (Pet* pet = player->GetPet())
-                        {
-                            pet->GivePetXP(XPGain(pet, nullptr));
-                        }
-
-                        return true;
                     }
                 }
             }
         }
 
         return false;
+    }
+
+    void ImmersiveModule::OnRewardPlayerAtKill(Player* player, Unit* victim)
+    {
+        if (GetConfig()->enabled && GetConfig()->xpOnPvPKill)
+        {
+            if (player && victim)
+            {
+                if (victim->IsPlayer() && player->IsAlive())
+                {
+                    // Calculate the exp given (formula from MaNGOS::XP::Gain)
+                    Player* playerVictim = (Player*)victim;
+                    player->GiveXP(XPGain(player, playerVictim), nullptr);
+                    if (Pet* pet = player->GetPet())
+                    {
+                        pet->GivePetXP(XPGain(pet, nullptr));
+                    }
+                }
+            }
+        }
     }
 
     bool ImmersiveModule::OnRespawn(Creature* creature, time_t& respawnTime)
