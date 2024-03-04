@@ -191,10 +191,11 @@ namespace immersive_module
                     !player->IsImmuneToDamage(SPELL_SCHOOL_MASK_NORMAL))
                 {
                     // Safe fall, fall height reduction
-                    int32 safe_fall = player->GetTotalAuraModifier(SPELL_AURA_SAFE_FALL);
+                    float safe_fall = player->GetTotalAuraModifier(SPELL_AURA_SAFE_FALL) * 0.5f;
+                    z_diff = z_diff > safe_fall ? z_diff - safe_fall : 0;
 
-                    float damageperc = 0.018f * (z_diff - safe_fall) - 0.2426f;
-                    damageperc = GetFallDamage(player, z_diff - safe_fall, damageperc);
+                    float damageperc = 0.018f * z_diff - 0.2426f;
+                    damageperc = GetFallDamage(player, z_diff, damageperc);
                     if (damageperc > 0)
                     {
                         uint32 damage = (uint32)(damageperc * player->GetMaxHealth() * sWorld.getConfig(CONFIG_FLOAT_RATE_DAMAGE_FALL));
