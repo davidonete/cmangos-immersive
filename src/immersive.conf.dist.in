@@ -100,7 +100,8 @@
 #
 #   Immersive.DisableInstanceRespawn
 #		Dungeon and raid creatures won't respawn until reset even if the server is down.
-#       Default: 0
+#       Default: 0 (Disabled)
+#                1 (Enabled)
 #
 #   Immersive.InfiniteLeveling
 #		If a player is allowed to level up past the expansion max level (all quests and npcs will give exp)
@@ -111,6 +112,11 @@
 #	Immersive.InfiniteLevelingMax
 #		The maximum level a player can reach (Can't be higher than 100)
 #		Default: 100
+#
+#	Immersive.GiveXPOnPvp
+#		If player kills should give experience
+#       Default: 0 (Disabled)
+#                1 (Enabled)
 #
 ###################################################################################################################
 
@@ -139,3 +145,4 @@ Immersive.DisableOfflineRespawn = 0
 Immersive.DisableInstanceRespawn = 0
 Immersive.InfiniteLeveling = 0
 Immersive.InfiniteLevelingMax = 100
+Immersive.GiveXPOnPvp = 0

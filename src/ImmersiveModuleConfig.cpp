@@ -27,6 +27,7 @@ ImmersiveModuleConfig::ImmersiveModuleConfig()
 , disableOfflineRespawn(false)
 , infiniteLeveling(false)
 , infiniteLevelingMax(0)
+, xpOnPvPKill(false)
 {
 
 }
@@ -58,5 +59,6 @@ bool ImmersiveModuleConfig::OnLoad()
     disableInstanceRespawn = config.GetBoolDefault("Immersive.DisableInstanceRespawn", false);
     infiniteLeveling = config.GetBoolDefault("Immersive.InfiniteLeveling", false);
     infiniteLevelingMax = config.GetIntDefault("Immersive.InfiniteLevelingMax", 100);
+    xpOnPvPKill = config.GetBoolDefault("Immersive.GiveXPOnPvp", false);
     return true;
 }

@@ -106,4 +106,5 @@ public:
     bool disableInstanceRespawn;
     bool infiniteLeveling;
     uint32 infiniteLevelingMax;
+    bool xpOnPvPKill;
 };

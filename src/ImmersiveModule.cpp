@@ -750,53 +750,136 @@ namespace immersive_module
         }
     }
 
-    uint32 XPGain(const Unit* unit, Creature* target)
+    uint32 XPGain(const Unit* unit, Unit* target)
     {
-        if (!target->IsTotem() && !target->IsPet() && !target->IsNoXp() && !target->IsCritter())
+        Player* player = nullptr;
+        if (unit && unit->IsPlayer())
         {
-            float xpGain = 0.0f;
-            const uint32 unitLevel = unit->GetLevel();
-            const uint32 targetLevel = target->GetLevel();
-            const uint32 nBaseExp = unitLevel * 5 + 45;
-            if (targetLevel >= unitLevel)
-            {
-                uint32 nLevelDiff = targetLevel - unitLevel;
-                nLevelDiff = nLevelDiff > 4 ? 4 : nLevelDiff;
-                xpGain = nBaseExp * (1.0f + (0.05f * nLevelDiff));
-            }
-            else
-            {
-                uint32 nLevelDiff = DEFAULT_MAX_LEVEL > targetLevel ? DEFAULT_MAX_LEVEL - targetLevel : 1;
-                xpGain = nBaseExp * (1.0f - (float(nLevelDiff) / 17));
-            }
+            player = (Player*)unit;
+        }
+        else if (unit && unit->IsCreature() && ((Creature*)unit)->GetSubtype() == CREATURE_SUBTYPE_PET)
+        {
+            player = (Player*)((Pet*)unit)->GetOwner();
+        }
 
-            if (xpGain > 0.0f)
+        Creature* creatureTarget = target && target->IsCreature() ? (Creature*)target : nullptr;
+        Player* playerTarget = target && target->IsPlayer() ? (Player*)target : nullptr;
+
+        if (!creatureTarget && !playerTarget)
+            return 0;
+
+        if (creatureTarget && (creatureTarget->IsTotem() || creatureTarget->IsPet() || creatureTarget->IsNoXp() || creatureTarget->IsCritter()))
+            return 0;
+
+        if (!player)
+            return 0;
+
+        float xpGain = 0.0f;
+        const uint32 unitLevel = unit->GetLevel();
+        const uint32 targetLevel = target->GetLevel();
+        const uint32 nBaseExp = unitLevel * 5 + 45;
+        if (targetLevel >= unitLevel)
+        {
+            uint32 nLevelDiff = targetLevel - unitLevel;
+            nLevelDiff = nLevelDiff > 4 ? 4 : nLevelDiff;
+            xpGain = nBaseExp * (1.0f + (0.05f * nLevelDiff));
+        }
+        else
+        {
+            uint32 nLevelDiff = DEFAULT_MAX_LEVEL > targetLevel ? DEFAULT_MAX_LEVEL - targetLevel : 1;
+            xpGain = nBaseExp * (1.0f - (float(nLevelDiff) / 17));
+        }
+
+        if (xpGain > 0.0f)
+        {
+            if (creatureTarget)
             {
-                if (target->IsElite())
+                Map* map = creatureTarget->GetMap();
+                if (map->IsDungeon() || map->IsRaid())
                 {
-                    if (target->GetMap()->IsRaid())
+                    DungeonMap* dungeonMap = (DungeonMap*)map;
+                    const uint32 maxPlayers = dungeonMap->GetMaxPlayers();
+                    if (dungeonMap->IsRaid())
                     {
-                        // Raid boss
-                        const CreatureInfo* creatureInfo = target->GetCreatureInfo();
-                        if (creatureInfo && creatureInfo->Rank == CREATURE_ELITE_WORLDBOSS)
+                        if (creatureTarget->IsElite())
                         {
-                            xpGain *= 10.0f;
+                            // Raid boss
+                            const CreatureInfo* creatureInfo = creatureTarget->GetCreatureInfo();
+                            if (creatureInfo && creatureInfo->Rank == CREATURE_ELITE_WORLDBOSS)
+                            {
+                                xpGain *= 10.0f;
+                            }
+                            // Raid elite
+                            else
+                            {
+                                xpGain *= 1.0f;
+                            }
+                        }
+                        // Raid non-elite creature
+                        else
+                        {
+                            xpGain *= 1.0f;
                         }
                     }
-                    else if (target->GetMap()->IsDungeon())
+                    else if (dungeonMap->IsDungeon())
                     {
-                        // Dungeon boss
-                        if (sObjectMgr.IsEncounter(target->GetEntry(), target->GetMapId()))
+                        if (creatureTarget->IsElite())
                         {
-                            xpGain *= 5.0f;
+                            // Dungeon boss
+                            if (sObjectMgr.IsEncounter(creatureTarget->GetEntry(), creatureTarget->GetMapId()))
+                            {
+                                xpGain *= 5.0f;
+                            }
+                            // Dungeon elite
+                            else
+                            {
+                                xpGain *= 1.0f;
+                            }
+                        }
+                        // Dungeon non-elite creature
+                        else
+                        {
+                            xpGain *= 1.0f;
                         }
                     }
+
+                    xpGain *= maxPlayers;
                 }
 
-                xpGain *= target->GetCreatureInfo()->ExperienceMultiplier;
-                xpGain = target->GetModifierXpBasedOnDamageReceived(xpGain);
-                return (uint32)(std::nearbyint(xpGain * sWorld.getConfig(CONFIG_FLOAT_RATE_XP_KILL)));
+                xpGain *= creatureTarget->GetCreatureInfo()->ExperienceMultiplier;
+                xpGain = creatureTarget->GetModifierXpBasedOnDamageReceived(xpGain);
             }
+            else if (playerTarget)
+            {
+                // BG player kill
+                if (player->InBattleGround())
+                {
+                    xpGain *= 1.0f;
+                }
+#if EXPANSION > 0
+                // Arena player kill
+                else if (player->InArena())
+                {
+                    xpGain *= 1.0f;
+                }
+#endif
+                // Open world player kill
+                else
+                {
+                    xpGain *= 1.0f;
+                }
+            }
+
+            xpGain *= sWorld.getConfig(CONFIG_FLOAT_RATE_XP_KILL);
+
+            // Divide group experience
+            if (player && player->GetGroup())
+            {
+                Group* group = player->GetGroup();
+                xpGain /= group->GetMembersCount();
+            }
+
+            return (uint32)(std::nearbyint(xpGain));
         }
 
         return 0;
@@ -804,23 +887,49 @@ namespace immersive_module
 
     bool ImmersiveModule::OnPreRewardPlayerAtKill(Player* player, Unit* victim)
     {
-        // Check if the player is on the range between the expansion max level and the set max level
-        const uint32 playerLevel = player->GetLevel();
-        if (playerLevel >= DEFAULT_MAX_LEVEL && playerLevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+        if (GetConfig()->enabled)
         {
-            if (victim->IsCreature() && !victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+            if (player && victim)
             {
-                if (victim->GetLevel() > DEFAULT_MAX_LEVEL - 5)
+                if (GetConfig()->infiniteLeveling)
                 {
-                    // Calculate the exp given (formula from MaNGOS::XP::Gain)
-                    Creature* creatureVictim = (Creature*)victim;
-                    player->GiveXP(XPGain(player, creatureVictim), creatureVictim);
-                    if (Pet* pet = player->GetPet())
+                    // Check if the player is on the range between the expansion max level and the set max level
+                    const uint32 playerLevel = player->GetLevel();
+                    if (playerLevel >= DEFAULT_MAX_LEVEL && playerLevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
                     {
-                        pet->GivePetXP(XPGain(pet, creatureVictim));
-                    }
+                        if (victim->IsCreature() && !victim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                        {
+                            if (victim->GetLevel() > DEFAULT_MAX_LEVEL - 5)
+                            {
+                                // Calculate the exp given (formula from MaNGOS::XP::Gain)
+                                Creature* creatureVictim = (Creature*)victim;
+                                player->GiveXP(XPGain(player, creatureVictim), creatureVictim);
+                                if (Pet* pet = player->GetPet())
+                                {
+                                    pet->GivePetXP(XPGain(pet, creatureVictim));
+                                }
 
-                    return true;
+                                return true;
+                            }
+                        }
+
+                    }
+                }
+
+                if (GetConfig()->xpOnPvPKill)
+                {
+                    if (victim->IsPlayer() && player->IsAlive())
+                    {
+                        // Calculate the exp given (formula from MaNGOS::XP::Gain)
+                        Player* playerVictim = (Player*)victim;
+                        player->GiveXP(XPGain(player, playerVictim), nullptr);
+                        if (Pet* pet = player->GetPet())
+                        {
+                            pet->GivePetXP(XPGain(pet, nullptr));
+                        }
+
+                        return true;
+                    }
                 }
             }
         }
