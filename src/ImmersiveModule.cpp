@@ -936,14 +936,19 @@ namespace immersive_module
             {
                 if (victim->IsPlayer() && player->IsAlive())
                 {
-                    // Calculate the exp given (formula from MaNGOS::XP::Gain)
                     Player* playerVictim = (Player*)victim;
+                    if (playerVictim->GetAura(2479, EFFECT_INDEX_0))
+                        return;
+
+                    if (player->GetTeam() == playerVictim->GetTeam())
+                        return;
 
                     // Only consider kills for players with 3 levels differences
                     const uint32 playerLevel = GetConfig()->infiniteLeveling && player->GetLevel() > DEFAULT_MAX_LEVEL + 1 ? DEFAULT_MAX_LEVEL : player->GetLevel();
                     const uint32 victimLevel = GetConfig()->infiniteLeveling && playerVictim->GetLevel() > DEFAULT_MAX_LEVEL + 1 ? DEFAULT_MAX_LEVEL : playerVictim->GetLevel();
                     if (playerLevel <= victimLevel + 3)
                     {
+                        // Calculate the exp given (formula from MaNGOS::XP::Gain)
                         player->GiveXP(XPGain(player, playerVictim), nullptr);
                         if (Pet* pet = player->GetPet())
                         {
