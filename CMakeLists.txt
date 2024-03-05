@@ -25,12 +25,6 @@ file(GLOB immersive_source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT
 #Define base source library
 set(LIBRARY_SRCS ${immersive_source})
 
-# Define ENABLE_PLAYERBOTS if need
-if (BUILD_PLAYERBOTS)
-	include_directories(${CMAKE_SOURCE_DIR}/src/modules/playerbots)
-	add_definitions(-DENABLE_PLAYERBOTS)
-endif()
-
 include_directories(${CMAKE_SOURCE_DIR}/src/modules/modules/src)
 add_definitions(-DENABLE_MODULES)
 add_definitions(-DENABLE_IMMERSIVE)
@@ -44,6 +38,13 @@ if ( ${CMAKE_PROJECT_NAME} MATCHES "TBC")
 endif()
 if ( ${CMAKE_PROJECT_NAME} MATCHES "WoTLK")
   add_definitions(-DEXPANSION=2)
+endif()
+
+# Define ENABLE_PLAYERBOTS if need
+if (BUILD_PLAYERBOTS)
+	include_directories(${CMAKE_SOURCE_DIR}/src/modules/playerbots)
+	include_directories(${CMAKE_SOURCE_DIR}/dep/g3dlite)
+	add_definitions(-DENABLE_PLAYERBOTS)
 endif()
 
 add_library(${LIBRARY_NAME} STATIC ${LIBRARY_SRCS})
