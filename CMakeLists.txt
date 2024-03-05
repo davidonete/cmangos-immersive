@@ -76,6 +76,8 @@ target_link_libraries(${LIBRARY_NAME}
 	RecastNavigation::Detour
 )
 
+set_target_properties(${LIBRARY_NAME} PROPERTIES PROJECT_LABEL "Immersive")
+
 if(UNIX)
 	# Both systems don't have libdl and don't need them
 	if (NOT (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD"))
