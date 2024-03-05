@@ -15,7 +15,7 @@
 #ifdef ENABLE_PLAYERBOTS
 #include "playerbot/PlayerbotAIConfig.h"
 #include "playerbot/PlayerbotAI.h"
-#include "ChatHelper.h"
+#include "playerbot/ChatHelper.h"
 #endif
 
 namespace immersive_module
