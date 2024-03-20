@@ -6,7 +6,7 @@
 #include "Entities/Player.h"
 #include "Globals/SharedDefines.h"
 #include "Globals/ObjectMgr.h"
-#include "Log.h"
+#include "Log/Log.h"
 #include "Spells/SpellMgr.h"
 #include "Tools/Formulas.h"
 #include "Tools/Language.h"
@@ -487,7 +487,7 @@ namespace immersive_module
             }
         }
 
-        string GetActionMessage(Player* player) override
+        std::string GetActionMessage(Player* player) override
         {
             return FormatString
             (

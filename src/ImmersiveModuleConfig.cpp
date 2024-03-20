@@ -1,5 +1,4 @@
 #include "ImmersiveModuleConfig.h"
-#include "Log.h"
 
 ImmersiveModuleConfig::ImmersiveModuleConfig()
 : ModuleConfig("immersive.conf")
