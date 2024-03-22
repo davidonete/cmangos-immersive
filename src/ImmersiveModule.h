@@ -46,14 +46,13 @@ namespace immersive_module
         void OnResurrect(Player* player) override;
         void OnGiveXP(Player* player, uint32 xp, Creature* victim) override;
         void OnGiveLevel(Player* player, uint32 level) override;
-        void OnModifyMoney(Player* player, int32 diff) override;
-        void OnSetReputation(Player* player, const FactionEntry* factionEntry, int32 standing, bool incremental) override;
-        void OnRewardQuest(Player* player, const Quest* quest) override;
+        void OnModifyMoney(Player* player, int32 diff) override;void OnRewardQuest(Player* player, const Quest* quest) override;
         void OnGossipHello(Player* player, Creature* creature) override;
         bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action, const std::string& code, uint32 gossipListId) override;
         void OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info) override;
         bool OnPreRewardPlayerAtKill(Player* player, Unit* victim) override;
         void OnRewardPlayerAtKill(Player* player, Unit* victim) override;
+        void OnSaveToDB(Player* player) override;
 
         // Creature Hooks
         bool OnRespawn(Creature* creature, time_t& respawnTime) override;
@@ -98,6 +97,7 @@ namespace immersive_module
     
         void SendSysMessage(Player *player, const std::string& message);
         void RunAction(Player* player, ImmersiveAction* action);
+        void SyncAccountReputation(Player* player);
 
     private:
         std::map<uint8, std::string> statValues;

@@ -94,6 +94,22 @@ namespace immersive_module
     }
     #endif
 
+    bool IsAlliance(uint8 race)
+    {
+        return race == RACE_HUMAN ||
+               race == RACE_DWARF ||
+               race == RACE_NIGHTELF ||
+#if EXPANSION > 0
+               race == RACE_DRAENEI ||
+#endif
+               race == RACE_GNOME;
+    }
+
+    bool IsAlliance(Player* player)
+    {
+        return IsAlliance(player->getRace());
+    }
+
     ImmersiveModule::ImmersiveModule()
     : Module("Immersive")
     , updateDelay(0U)
@@ -464,63 +480,6 @@ namespace immersive_module
         if (botMoney < 1) return;
 
         OnGiveMoneyAction action(botMoney, GetConfig());
-        RunAction(player, &action);
-    #endif
-    }
-
-    #ifdef ENABLE_PLAYERBOTS
-    class OnReputationChangeAction : public ImmersiveAction
-    {
-    public:
-        OnReputationChangeAction(FactionEntry const* factionEntry, int32 value, const ImmersiveModuleConfig* config) : ImmersiveAction(config), factionEntry(factionEntry), value(value) {}
-
-        bool Run(Player* player, Player* bot) override
-        {
-            if (!CheckSharedPercentReqs(player, bot))
-            {
-                return false;
-            }
-            else
-            {
-                bot->GetReputationMgr().ModifyReputation(factionEntry, ApplyRandomPercent(value, config));
-                return true;
-            }
-        }
-
-        std::string GetActionMessage(Player* player) override
-        {
-            return FormatString
-            (
-                sObjectMgr.GetMangosString(LANG_IMMERSIVE_REPUTATION_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-                value
-            );
-        }
-
-    private:
-        FactionEntry const* factionEntry;
-        int32 value;
-    };
-    #endif
-
-    void ImmersiveModule::OnSetReputation(Player* player, FactionEntry const* factionEntry, int32 standing, bool incremental)
-    {
-    #ifdef ENABLE_PLAYERBOTS
-        if (!GetConfig()->enabled)
-            return;
-
-        if (!player->GetPlayerbotMgr())
-            return;
-
-        if (!incremental)
-            return;
-
-        if (GetConfig()->sharedRepPercent < 0.01f)
-            return;
-
-        int32 value = (uint32)(standing * GetConfig()->sharedRepPercent / 100.0f);
-        if (value < 1) return;
-
-        OnReputationChangeAction action(factionEntry, value, GetConfig());
         RunAction(player, &action);
     #endif
     }
@@ -958,6 +917,11 @@ namespace immersive_module
                 }
             }
         }
+    }
+
+    void ImmersiveModule::OnSaveToDB(Player* player)
+    {
+        SyncAccountReputation(player);
     }
 
     bool ImmersiveModule::OnRespawn(Creature* creature, time_t& respawnTime)
@@ -1943,18 +1907,6 @@ namespace immersive_module
         return false;
     }
 
-    bool PlayerIsAlliance(Player* player)
-    {
-        const uint8 race = player->getRace();
-        return race == RACE_HUMAN || 
-               race == RACE_DWARF || 
-               race == RACE_NIGHTELF ||
-    #if EXPANSION > 0
-               race == RACE_DRAENEI ||
-    #endif
-               race == RACE_GNOME;
-    }
-
     bool ImmersiveAction::CheckSharedPercentReqsSingle(Player* player, Player* bot)
     {
         if (!config->enabled) return false;
@@ -1970,7 +1922,7 @@ namespace immersive_module
         if (config->sharedPercentGuildRestiction && player->GetGuildId() != bot->GetGuildId())
             return false;
 
-        if (config->sharedPercentFactionRestiction && (PlayerIsAlliance(player) ^ PlayerIsAlliance(bot)))
+        if (config->sharedPercentFactionRestiction && (IsAlliance(player) ^ IsAlliance(bot)))
             return false;
 
         if (config->sharedPercentRaceRestiction == 2)
@@ -2023,6 +1975,92 @@ namespace immersive_module
         if (!needMsg) return;
         out << "|cffffff00: " << action->GetActionMessage(player);
         SendSysMessage(player, out.str());
+    }
+
+    struct AccountCharacter
+    {
+        uint32 guid;
+        uint32 race;
+        uint32 clss;
+        std::unordered_map<uint32, uint32> factions;
+    };
+
+    void ImmersiveModule::SyncAccountReputation(Player* player)
+    {
+        if (GetConfig()->enabled && GetConfig()->accountReputation)
+        {
+            if (player)
+            {
+                static std::set<uint32> allianceFactions = { 47, 54, 69, 72, 469, 471, 509, 589, 730, 890, 891, 930, 946, 978, 1037, 1068, 1050, 1094, 1126 };
+                static std::set<uint32> hordeFactions = { 67, 68, 76, 81, 510, 530, 729, 889, 892, 911, 922, 941, 947, 1052, 1064, 1067, 1085, 1124 };
+
+                std::vector<AccountCharacter> accountCharacters;
+                const uint32 currentCharacterGuid = player->GetGUIDLow();
+                const uint32 accountId = player->GetSession()->GetAccountId();
+                auto result = CharacterDatabase.PQuery("SELECT `guid`, `race`, `class` FROM `characters` WHERE `account` = '%u'", accountId);
+                if (result)
+                {
+                    do
+                    {
+                        Field* fields = result->Fetch();
+                        const uint32 characterGuid = fields[0].GetUInt32();
+                        if (characterGuid != currentCharacterGuid)
+                        {
+                            AccountCharacter accountCharacter;
+                            accountCharacter.guid = characterGuid;
+                            accountCharacter.race = fields[1].GetUInt8();
+                            accountCharacter.clss = fields[2].GetUInt8();
+
+                            auto result2 = CharacterDatabase.PQuery("SELECT `faction`, `standing` FROM `character_reputation` WHERE `guid` = '%u'", characterGuid);
+                            if (result2)
+                            {
+                                do
+                                {
+                                    Field* fields2 = result2->Fetch();
+                                    const uint32 factionID = fields[0].GetUInt32();
+                                    const uint32 standing = fields[1].GetUInt32();
+                                    accountCharacter.factions[factionID] = standing;
+                                } while (result2->NextRow());
+                            }
+
+                            accountCharacters.push_back(std::move(accountCharacter));
+                        }
+                    } 
+                    while (result->NextRow());
+                }
+
+                if (!accountCharacters.empty())
+                {
+                    for (const auto& factionIt : player->GetReputationMgr().GetStateList())
+                    {
+                        const FactionState& faction = factionIt.second;
+                        const FactionEntry* factionEntry = sFactionStore.LookupEntry(faction.ID);
+                        if (factionEntry)
+                        {
+                            for (const AccountCharacter& character : accountCharacters)
+                            {
+                                // Check for alliance/horde only faction
+                                const bool isAlliance = IsAlliance(character.race);
+                                if ((isAlliance && hordeFactions.find(faction.ID) == hordeFactions.end()) ||
+                                    (!isAlliance && allianceFactions.find(faction.ID) == allianceFactions.end()))
+                                {
+                                    // Only update the reputation if it's lower than the current character reputation amount
+                                    auto accountCharacterFactionIt = character.factions.find(faction.ID);
+                                    if (accountCharacterFactionIt != character.factions.end())
+                                    {
+                                        const uint32 standing = accountCharacterFactionIt->second;
+                                        if (faction.Standing > standing)
+                                        {
+                                            CharacterDatabase.PExecute("UPDATE `character_reputation` SET `standing` = '%d' WHERE `guid` = '%d'", faction.Standing, character.guid);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     int32 ImmersiveModule::CalculateEffectiveChance(int32 difference, const Unit* attacker, const Unit* victim, ImmersiveEffectiveChance type)

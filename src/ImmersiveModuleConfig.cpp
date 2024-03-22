@@ -10,7 +10,7 @@ ImmersiveModuleConfig::ImmersiveModuleConfig()
 , manualAttributesMaxPoints(0)
 , sharedXpPercent(0)
 , sharedMoneyPercent(0)
-, sharedRepPercent(0)
+, accountReputation(false)
 , sharedQuests(false)
 , fishingBaubles(false)
 , sharedPercentRaceRestiction(0)
@@ -39,9 +39,9 @@ bool ImmersiveModuleConfig::OnLoad()
     manualAttributesIncrease = config.GetIntDefault("Immersive.ManualAttributesIncrease", 5);
     manualAttributesCostMult = config.GetIntDefault("Immersive.ManualAttributesCostMult", 5);
     manualAttributesMaxPoints = config.GetIntDefault("Immersive.ManualAttributesMaxPoints", 0);
+    accountReputation = config.GetBoolDefault("Immersive.AccountReputation", false);
     sharedXpPercent = config.GetIntDefault("Immersive.SharedXpPercent", 0);
     sharedMoneyPercent = config.GetIntDefault("Immersive.SharedMoneyPercent", 0);
-    sharedRepPercent = config.GetIntDefault("Immersive.SharedRepPercent", 0);
     sharedQuests = config.GetBoolDefault("Immersive.SharedQuests", false);
     fishingBaubles = config.GetBoolDefault("Immersive.FishingBaubles", false);
     sharedPercentRaceRestiction = config.GetIntDefault("Immersive.SharedPercentRaceRestriction", 0);

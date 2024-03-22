@@ -87,9 +87,9 @@ public:
     uint32 manualAttributesIncrease;
     uint32 manualAttributesCostMult;
     uint32 manualAttributesMaxPoints;
+    bool accountReputation;
     uint32 sharedXpPercent;
     uint32 sharedMoneyPercent;
-    uint32 sharedRepPercent;
     bool sharedQuests;
     bool fishingBaubles;
     uint32 sharedPercentRaceRestiction;
