@@ -1982,7 +1982,7 @@ namespace immersive_module
         uint32 guid;
         uint32 race;
         uint32 clss;
-        std::unordered_map<uint32, uint32> factions;
+        std::unordered_map<uint32, int32> factions;
     };
 
     void ImmersiveModule::SyncAccountReputation(Player* player)
@@ -1991,67 +1991,68 @@ namespace immersive_module
         {
             if (player)
             {
-                static std::set<uint32> allianceFactions = { 47, 54, 69, 72, 469, 471, 509, 589, 730, 890, 891, 930, 946, 978, 1037, 1068, 1050, 1094, 1126 };
-                static std::set<uint32> hordeFactions = { 67, 68, 76, 81, 510, 530, 729, 889, 892, 911, 922, 941, 947, 1052, 1064, 1067, 1085, 1124 };
-
-                std::vector<AccountCharacter> accountCharacters;
-                const uint32 currentCharacterGuid = player->GetGUIDLow();
-                const uint32 accountId = player->GetSession()->GetAccountId();
-                auto result = CharacterDatabase.PQuery("SELECT `guid`, `race`, `class` FROM `characters` WHERE `account` = '%u'", accountId);
-                if (result)
+                const auto& characterFactions = player->GetReputationMgr().GetStateList();
+                if (!characterFactions.empty())
                 {
-                    do
-                    {
-                        Field* fields = result->Fetch();
-                        const uint32 characterGuid = fields[0].GetUInt32();
-                        if (characterGuid != currentCharacterGuid)
-                        {
-                            AccountCharacter accountCharacter;
-                            accountCharacter.guid = characterGuid;
-                            accountCharacter.race = fields[1].GetUInt8();
-                            accountCharacter.clss = fields[2].GetUInt8();
+                    static std::set<uint32> allianceFactions = { 47, 54, 69, 72, 469, 471, 509, 589, 730, 890, 891, 930, 946, 978, 1037, 1068, 1050, 1094, 1126 };
+                    static std::set<uint32> hordeFactions = { 67, 68, 76, 81, 510, 530, 729, 889, 892, 911, 922, 941, 947, 1052, 1064, 1067, 1085, 1124 };
 
-                            auto result2 = CharacterDatabase.PQuery("SELECT `faction`, `standing` FROM `character_reputation` WHERE `guid` = '%u'", characterGuid);
-                            if (result2)
+                    std::vector<AccountCharacter> accountCharacters;
+                    const uint32 currentCharacterGuid = player->GetGUIDLow();
+                    const uint32 accountId = player->GetSession()->GetAccountId();
+                    auto result = CharacterDatabase.PQuery("SELECT `guid`, `race`, `class` FROM `characters` WHERE `account` = '%u'", accountId);
+                    if (result)
+                    {
+                        do
+                        {
+                            Field* fields = result->Fetch();
+                            const uint32 characterGuid = fields[0].GetUInt32();
+                            if (characterGuid != currentCharacterGuid)
                             {
-                                do
+                                auto result2 = CharacterDatabase.PQuery("SELECT `faction`, `standing` FROM `character_reputation` WHERE `guid` = '%u'", characterGuid);
+                                if (result2)
                                 {
-                                    Field* fields2 = result2->Fetch();
-                                    const uint32 factionID = fields[0].GetUInt32();
-                                    const uint32 standing = fields[1].GetUInt32();
-                                    accountCharacter.factions[factionID] = standing;
-                                } while (result2->NextRow());
+                                    AccountCharacter accountCharacter;
+                                    accountCharacter.guid = characterGuid;
+                                    accountCharacter.race = fields[1].GetUInt8();
+                                    accountCharacter.clss = fields[2].GetUInt8();
+
+                                    do
+                                    {
+                                        Field* fields2 = result2->Fetch();
+                                        const uint32 factionID = fields2[0].GetUInt32();
+                                        const uint32 standing = fields2[1].GetInt32();
+                                        accountCharacter.factions[factionID] = standing;
+                                    } 
+                                    while (result2->NextRow());
+
+                                    accountCharacters.push_back(std::move(accountCharacter));
+                                }
                             }
+                        } 
+                        while (result->NextRow());
+                    }
 
-                            accountCharacters.push_back(std::move(accountCharacter));
-                        }
-                    } 
-                    while (result->NextRow());
-                }
-
-                if (!accountCharacters.empty())
-                {
-                    for (const auto& factionIt : player->GetReputationMgr().GetStateList())
+                    if (!accountCharacters.empty())
                     {
-                        const FactionState& faction = factionIt.second;
-                        const FactionEntry* factionEntry = sFactionStore.LookupEntry(faction.ID);
-                        if (factionEntry)
+                        for (const auto& characterFactionIt : characterFactions)
                         {
+                            const FactionState& characterFaction = characterFactionIt.second;
                             for (const AccountCharacter& character : accountCharacters)
                             {
                                 // Check for alliance/horde only faction
                                 const bool isAlliance = IsAlliance(character.race);
-                                if ((isAlliance && hordeFactions.find(faction.ID) == hordeFactions.end()) ||
-                                    (!isAlliance && allianceFactions.find(faction.ID) == allianceFactions.end()))
+                                if ((isAlliance && hordeFactions.find(characterFaction.ID) == hordeFactions.end()) ||
+                                    (!isAlliance && allianceFactions.find(characterFaction.ID) == allianceFactions.end()))
                                 {
                                     // Only update the reputation if it's lower than the current character reputation amount
-                                    auto accountCharacterFactionIt = character.factions.find(faction.ID);
+                                    auto accountCharacterFactionIt = character.factions.find(characterFaction.ID);
                                     if (accountCharacterFactionIt != character.factions.end())
                                     {
-                                        const uint32 standing = accountCharacterFactionIt->second;
-                                        if (faction.Standing > standing)
+                                        const int32 standing = accountCharacterFactionIt->second;
+                                        if (characterFaction.Standing > standing)
                                         {
-                                            CharacterDatabase.PExecute("UPDATE `character_reputation` SET `standing` = '%d' WHERE `guid` = '%d'", faction.Standing, character.guid);
+                                            CharacterDatabase.PExecute("UPDATE `character_reputation` SET `standing` = '%d' WHERE `guid` = '%d' AND `faction` = '%d'", characterFaction.Standing, character.guid, characterFaction.ID);
                                         }
                                     }
                                 }
