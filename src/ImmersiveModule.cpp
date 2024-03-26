@@ -111,7 +111,7 @@ namespace immersive_module
     }
 
     ImmersiveModule::ImmersiveModule()
-    : Module("Immersive")
+    : CmangosModule("Immersive")
     , updateDelay(0U)
     {
         statValues[STAT_STRENGTH] = "Strength";

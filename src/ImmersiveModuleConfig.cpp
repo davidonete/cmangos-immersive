@@ -1,7 +1,7 @@
 #include "ImmersiveModuleConfig.h"
 
 ImmersiveModuleConfig::ImmersiveModuleConfig()
-: ModuleConfig("immersive.conf")
+: CmangosModuleConfig("immersive.conf")
 , enabled(false)
 , manualAttributes(false)
 , manualAttributesPercent(0)

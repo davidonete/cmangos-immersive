@@ -1,5 +1,5 @@
 #pragma once
-#include "ModuleConfig.h"
+#include "CmangosModuleConfig.h"
 
 enum ImmersiveEffectiveChance
 {
@@ -74,7 +74,7 @@ enum ImmersiveMangosStrings
     LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_PCT
 };
 
-class ImmersiveModuleConfig : public ModuleConfig
+class ImmersiveModuleConfig : public CmangosModuleConfig
 {
 public:
     ImmersiveModuleConfig();

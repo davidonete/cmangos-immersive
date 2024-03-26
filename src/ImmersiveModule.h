@@ -1,7 +1,7 @@
 #ifndef MANGOS_IMMERSIVE_MODULE_H
 #define MANGOS_IMMERSIVE_MODULE_H
 
-#include "Module.h"
+#include "CmangosModule.h"
 #include "ImmersiveModuleConfig.h"
 
 struct PlayerInfo;
@@ -27,7 +27,7 @@ namespace immersive_module
         const ImmersiveModuleConfig* config;
     };
 
-    class ImmersiveModule : public Module
+    class ImmersiveModule : public CmangosModule
     {
     public:
         ImmersiveModule();
