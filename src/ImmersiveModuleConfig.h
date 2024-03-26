@@ -1,5 +1,5 @@
 #pragma once
-#include "../../modules/src/ModuleConfig.h"
+#include "ModuleConfig.h"
 
 enum ImmersiveEffectiveChance
 {

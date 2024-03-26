@@ -1,7 +1,7 @@
 #ifndef MANGOS_IMMERSIVE_MODULE_H
 #define MANGOS_IMMERSIVE_MODULE_H
 
-#include "../../modules/src/Module.h"
+#include "Module.h"
 #include "ImmersiveModuleConfig.h"
 
 struct PlayerInfo;
