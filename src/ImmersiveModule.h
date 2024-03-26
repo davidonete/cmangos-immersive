@@ -105,7 +105,5 @@ namespace immersive_module
         std::unordered_set<uint32> creatureRespawnScheduled;
         uint32 updateDelay;
     };
-
-    static ImmersiveModule immersiveModule;
 }
 #endif
