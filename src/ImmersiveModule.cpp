@@ -18,100 +18,69 @@
 #include "playerbot/ChatHelper.h"
 #endif
 
-namespace cmangos_module
+std::string formatMoney(uint32 copper)
 {
-    bool IsMaxLevel(Player* player)
+    std::ostringstream out;
+    if (!copper)
     {
-        return player && player->GetLevel() >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
-    }
-
-    std::string formatMoney(uint32 copper)
-    {
-        std::ostringstream out;
-        if (!copper)
-        {
-            out << "0";
-            return out.str();
-        }
-
-        uint32 gold = uint32(copper / 10000);
-        copper -= (gold * 10000);
-        uint32 silver = uint32(copper / 100);
-        copper -= (silver * 100);
-
-        bool space = false;
-        if (gold > 0)
-        {
-            out << gold << "g";
-            space = true;
-        }
-
-        if (silver > 0 && gold < 50)
-        {
-            if (space) out << " ";
-            out << silver << "s";
-            space = true;
-        }
-
-        if (copper > 0 && gold < 10)
-        {
-            if (space) out << " ";
-            out << copper << "c";
-        }
-
+        out << "0";
         return out.str();
     }
 
-    std::string percent(Player* player)
+    uint32 gold = uint32(copper / 10000);
+    copper -= (gold * 10000);
+    uint32 silver = uint32(copper / 100);
+    copper -= (silver * 100);
+
+    bool space = false;
+    if (gold > 0)
     {
-    #ifdef ENABLE_PLAYERBOTS
-        return player->GetPlayerbotAI() ? "%" : "%%";
-    #else
-        return "%%";
-    #endif
+        out << gold << "g";
+        space = true;
     }
 
-    std::string FormatString(const char* format, ...)
+    if (silver > 0 && gold < 50)
     {
-        va_list ap;
-        char out[2048];
-        va_start(ap, format);
-        vsnprintf(out, 2048, format, ap);
-        va_end(ap);
-        return std::string(out);
+        if (space) out << " ";
+        out << silver << "s";
+        space = true;
     }
 
-    #ifdef ENABLE_PLAYERBOTS
-    bool IsRandomBot(const Unit* unit)
+    if (copper > 0 && gold < 10)
     {
-        if (unit && unit->IsPlayer())
-        {
-            Player* player = (Player*)unit;
-            return sRandomPlayerbotMgr.IsFreeBot(player);
-        }
-
-        return false;
+        if (space) out << " ";
+        out << copper << "c";
     }
-    #endif
 
-    bool IsAlliance(uint8 race)
-    {
-        return race == RACE_HUMAN ||
-               race == RACE_DWARF ||
-               race == RACE_NIGHTELF ||
-#if EXPANSION > 0
-               race == RACE_DRAENEI ||
+    return out.str();
+}
+
+std::string percent(Player* player)
+{
+#ifdef ENABLE_PLAYERBOTS
+    return player->GetPlayerbotAI() ? "%" : "%%";
+#else
+    return "%%";
 #endif
-               race == RACE_GNOME;
-    }
+}
 
-    bool IsAlliance(Player* player)
+#ifdef ENABLE_PLAYERBOTS
+bool IsRandomBot(const Unit* unit)
+{
+    if (unit && unit->IsPlayer())
     {
-        return IsAlliance(player->getRace());
+        Player* player = (Player*)unit;
+        return sRandomPlayerbotMgr.IsFreeBot(player);
     }
 
+    return false;
+}
+#endif
+
+namespace cmangos_module
+{
     ImmersiveModule::ImmersiveModule()
-    : Module("Immersive")
+    : Module("Immersive", new ImmersiveModuleConfig())
     , updateDelay(0U)
     {
         statValues[STAT_STRENGTH] = "Strength";
@@ -121,14 +90,9 @@ namespace cmangos_module
         statValues[STAT_SPIRIT] = "Spirit";
     }
 
-    ImmersiveModuleConfig* ImmersiveModule::CreateConfig()
-    {
-        return new ImmersiveModuleConfig();
-    }
-
     const ImmersiveModuleConfig* ImmersiveModule::GetConfig() const
     {
-        return (ImmersiveModuleConfig*)GetConfigInternal();
+        return (ImmersiveModuleConfig*)Module::GetConfig();
     }
 
     void ImmersiveModule::OnInitialize()
@@ -270,7 +234,7 @@ namespace cmangos_module
     #endif
 
         // Don't lose stats on max level
-        if (IsMaxLevel(player))
+        if (helper::IsMaxLevel(player))
             return;
 
         // Don't get lose stats on battlegrounds
@@ -320,9 +284,11 @@ namespace cmangos_module
                 }
             }
 
-            SendSysMessage(player, FormatString(
+            SendSysMessage(player, helper::FormatString
+            (
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_LOST, player->GetSession()->GetSessionDbLocaleIndex()),
-                out.str().c_str()));
+                out.str().c_str()
+            ));
 
             player->InitStatsForLevel(true);
             player->UpdateAllStats();
@@ -367,7 +333,7 @@ namespace cmangos_module
 
         std::string GetActionMessage(Player* player) override
         {
-            return FormatString
+            return helper::FormatString
             (
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_EXP_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
                 value
@@ -419,9 +385,11 @@ namespace cmangos_module
                 const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
                 if (availablePoints > 0)
                 {
-                    SendSysMessage(player, FormatString(
+                    SendSysMessage(player, helper::FormatString
+                    (
                         sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
-                        availablePoints));
+                        availablePoints
+                    ));
                 }
             }
 
@@ -459,7 +427,7 @@ namespace cmangos_module
 
         std::string GetActionMessage(Player* player) override
         {
-            return FormatString
+            return helper::FormatString
             (
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_MONEY_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
                 ai::ChatHelper::formatMoney(value).c_str()
@@ -529,7 +497,7 @@ namespace cmangos_module
 
         std::string GetActionMessage(Player* player) override
         {
-            return FormatString
+            return helper::FormatString
             (
                 sObjectMgr.GetMangosString(LANG_IMMERSIVE_QUEST_COMPLETED, player->GetSession()->GetSessionDbLocaleIndex()),
                 quest->GetTitle().c_str()
@@ -600,15 +568,15 @@ namespace cmangos_module
                         const std::string reduceAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE);
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, reduceAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_MENU, "", false);
                         const std::string improveAttributeStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_IMPROVE);
-                        const std::string improveStrengthStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH));
+                        const std::string improveStrengthStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveStrengthStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_STRENGTH, "", false);
-                        const std::string improveAgilityStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AGILITY));
+                        const std::string improveAgilityStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AGILITY));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveAgilityStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_AGILITY, "", false);
-                        const std::string improveStaminaStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STAMINA));
+                        const std::string improveStaminaStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STAMINA));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveStaminaStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_STAMINA, "", false);
-                        const std::string improveIntellectStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_INTELLECT));
+                        const std::string improveIntellectStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_INTELLECT));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveIntellectStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_INTELLECT, "", false);
-                        const std::string improveSpiritStr = FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SPIRIT));
+                        const std::string improveSpiritStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SPIRIT));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveSpiritStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_SPIRIT, "", false);
                         player->GetPlayerMenu()->SendGossipMenu(IMMERSIVE_NPC_TEXT, creature->GetObjectGuid());
                         return true;
@@ -654,23 +622,23 @@ namespace cmangos_module
                         const std::string removeReductionStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_REMOVE);
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, removeReductionStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_0, "", false);
                         const std::string reduceStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_PCT);
-                        const std::string reduce10PctStr = FormatString(reduceStr.c_str(), "10%");
+                        const std::string reduce10PctStr = helper::FormatString(reduceStr.c_str(), "10%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce10PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_10, "", false);
-                        const std::string reduce20PctStr = FormatString(reduceStr.c_str(), "20%");
+                        const std::string reduce20PctStr = helper::FormatString(reduceStr.c_str(), "20%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce20PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_20, "", false);
-                        const std::string reduce30PctStr = FormatString(reduceStr.c_str(), "30%");
+                        const std::string reduce30PctStr = helper::FormatString(reduceStr.c_str(), "30%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce30PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_30, "", false);
-                        const std::string reduce40PctStr = FormatString(reduceStr.c_str(), "40%");
+                        const std::string reduce40PctStr = helper::FormatString(reduceStr.c_str(), "40%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce40PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_40, "", false);
-                        const std::string reduce50PctStr = FormatString(reduceStr.c_str(), "50%");
+                        const std::string reduce50PctStr = helper::FormatString(reduceStr.c_str(), "50%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce50PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_50, "", false);
-                        const std::string reduce60PctStr = FormatString(reduceStr.c_str(), "60%");
+                        const std::string reduce60PctStr = helper::FormatString(reduceStr.c_str(), "60%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce60PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_60, "", false);
-                        const std::string reduce70PctStr = FormatString(reduceStr.c_str(), "70%");
+                        const std::string reduce70PctStr = helper::FormatString(reduceStr.c_str(), "70%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce70PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_70, "", false);
-                        const std::string reduce80PctStr = FormatString(reduceStr.c_str(), "80%");
+                        const std::string reduce80PctStr = helper::FormatString(reduceStr.c_str(), "80%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce80PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_80, "", false);
-                        const std::string reduce90PctStr = FormatString(reduceStr.c_str(), "90%");
+                        const std::string reduce90PctStr = helper::FormatString(reduceStr.c_str(), "90%");
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, reduce90PctStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_90, "", false);
                         player->GetPlayerMenu()->SendGossipMenu(IMMERSIVE_REDUCE_ATTR_TEXT, creature->GetObjectGuid());
                         return true;
@@ -1581,7 +1549,7 @@ namespace cmangos_module
         uint32 totalStats = GetTotalStats(player);
         uint32 purchaseCost = GetStatCost(player) * GetConfig()->manualAttributesIncrease;
 
-        SendSysMessage(player, FormatString
+        SendSysMessage(player, helper::FormatString
         (
             sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AVAILABLE, player->GetSession()->GetSessionDbLocaleIndex()),
             (totalStats > usedStats ? totalStats - usedStats : 0),
@@ -1625,12 +1593,14 @@ namespace cmangos_module
         if (modifier != 100)
         {
             std::ostringstream modifierStr; modifierStr << modifier << percent(player);
-            out << " " << FormatString(sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MODIFIER, player->GetSession()->GetSessionDbLocaleIndex()), modifierStr.str().c_str());
+            out << " " << helper::FormatString(sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MODIFIER, player->GetSession()->GetSessionDbLocaleIndex()), modifierStr.str().c_str());
         }
 
-        SendSysMessage(player, FormatString(
-                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_ASSIGNED, player->GetSession()->GetSessionDbLocaleIndex()),
-                    out.str().c_str()));
+        SendSysMessage(player, helper::FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_ASSIGNED, player->GetSession()->GetSessionDbLocaleIndex()),
+            out.str().c_str()
+        ));
     }
 
     void ImmersiveModule::PrintSuggestedStats(Player* player)
@@ -1655,9 +1625,11 @@ namespace cmangos_module
 
         if (used)
         {
-            SendSysMessage(player, FormatString(
-                        sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SUGGESTED, player->GetSession()->GetSessionDbLocaleIndex()),
-                        out.str().c_str()));
+            SendSysMessage(player, helper::FormatString
+            (
+                sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SUGGESTED, player->GetSession()->GetSessionDbLocaleIndex()),
+                out.str().c_str()
+            ));
         }
     }
 
@@ -1676,9 +1648,11 @@ namespace cmangos_module
             modifierStr << " " << sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MOD_DISABLED, player->GetSession()->GetSessionDbLocaleIndex());
         }
 
-        SendSysMessage(player, FormatString(
-                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MOD_CHANGED, player->GetSession()->GetSessionDbLocaleIndex()),
-                    modifierStr.str().c_str()));
+        SendSysMessage(player, helper::FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MOD_CHANGED, player->GetSession()->GetSessionDbLocaleIndex()),
+            modifierStr.str().c_str()
+        ));
 
         player->InitStatsForLevel(true);
         player->UpdateAllStats();
@@ -1719,12 +1693,14 @@ namespace cmangos_module
         totalStats = GetTotalStats(player);
         attributePointsAvailable = (totalStats > usedStats ? totalStats - usedStats : 0);
 
-        SendSysMessage(player, FormatString(
-                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
-                    statIncrease,
-                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + type, player->GetSession()->GetSessionDbLocaleIndex()),
-                    attributePointsAvailable,
-                    formatMoney(purchaseCost).c_str()));
+        SendSysMessage(player, helper::FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_GAINED, player->GetSession()->GetSessionDbLocaleIndex()),
+            statIncrease,
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + type, player->GetSession()->GetSessionDbLocaleIndex()),
+            attributePointsAvailable,
+            formatMoney(purchaseCost).c_str()
+        ));
 
         PrintUsedStats(player);
 
@@ -1752,9 +1728,11 @@ namespace cmangos_module
         uint32 usedStats = GetUsedStats(player);
         uint32 totalStats = GetTotalStats(player);
 
-        SendSysMessage(player, FormatString(
-                    sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_RESET, player->GetSession()->GetSessionDbLocaleIndex()),
-                    (totalStats > usedStats ? totalStats - usedStats : 0)));
+        SendSysMessage(player, helper::FormatString
+        (
+            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_RESET, player->GetSession()->GetSessionDbLocaleIndex()),
+            (totalStats > usedStats ? totalStats - usedStats : 0)
+        ));
 
         player->InitStatsForLevel(true);
         player->UpdateAllStats();
@@ -1932,7 +1910,7 @@ namespace cmangos_module
         if (config->sharedPercentGuildRestiction && player->GetGuildId() != bot->GetGuildId())
             return false;
 
-        if (config->sharedPercentFactionRestiction && (IsAlliance(player) ^ IsAlliance(bot)))
+        if (config->sharedPercentFactionRestiction && (helper::IsAlliance(player) ^ helper::IsAlliance(bot)))
             return false;
 
         if (config->sharedPercentRaceRestiction == 2)

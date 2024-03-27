@@ -1,5 +1,5 @@
-#ifndef MANGOS_IMMERSIVE_MODULE_H
-#define MANGOS_IMMERSIVE_MODULE_H
+#ifndef CMANGOS_MODULE_IMMERSIVE_H
+#define CMANGOS_MODULE_IMMERSIVE_H
 
 #include "Module.h"
 #include "ImmersiveModuleConfig.h"
@@ -29,7 +29,6 @@ namespace cmangos_module
     {
     public:
         ImmersiveModule();
-        ImmersiveModuleConfig* CreateConfig() override;
         const ImmersiveModuleConfig* GetConfig() const override;
 
         // Module Hooks
