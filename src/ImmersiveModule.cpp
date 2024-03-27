@@ -111,7 +111,7 @@ namespace immersive_module
     }
 
     ImmersiveModule::ImmersiveModule()
-    : CmangosModule("Immersive")
+    : cmangos_modules::Module("Immersive")
     , updateDelay(0U)
     {
         statValues[STAT_STRENGTH] = "Strength";
@@ -119,6 +119,16 @@ namespace immersive_module
         statValues[STAT_STAMINA] = "Stamina";
         statValues[STAT_INTELLECT] = "Intellect";
         statValues[STAT_SPIRIT] = "Spirit";
+    }
+
+    ImmersiveModuleConfig* ImmersiveModule::CreateConfig()
+    {
+        return new ImmersiveModuleConfig();
+    }
+
+    const immersive_module::ImmersiveModuleConfig* ImmersiveModule::GetConfig() const
+    {
+        return (ImmersiveModuleConfig*)GetConfigInternal();
     }
 
     void ImmersiveModule::OnInitialize()

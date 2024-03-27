@@ -1,12 +1,10 @@
 #ifndef MANGOS_IMMERSIVE_MODULE_H
 #define MANGOS_IMMERSIVE_MODULE_H
 
-#include "CmangosModule.h"
+#include "Module.h"
 #include "ImmersiveModuleConfig.h"
 
 struct PlayerInfo;
-
-class ImmersiveModule;
 
 namespace immersive_module
 {
@@ -27,12 +25,12 @@ namespace immersive_module
         const ImmersiveModuleConfig* config;
     };
 
-    class ImmersiveModule : public CmangosModule
+    class ImmersiveModule : public cmangos_modules::Module
     {
     public:
         ImmersiveModule();
-        ImmersiveModuleConfig* CreateConfig() override { return new ImmersiveModuleConfig(); }
-        const ImmersiveModuleConfig* GetConfig() const override { return (ImmersiveModuleConfig*)GetConfigInternal(); }
+        ImmersiveModuleConfig* CreateConfig() override;
+        const ImmersiveModuleConfig* GetConfig() const override;
 
         // Module Hooks
         void OnInitialize() override;
