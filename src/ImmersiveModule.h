@@ -6,7 +6,7 @@
 
 struct PlayerInfo;
 
-namespace immersive_module
+namespace cmangos_module
 {
     class ImmersiveAction
     {
@@ -25,7 +25,7 @@ namespace immersive_module
         const ImmersiveModuleConfig* config;
     };
 
-    class ImmersiveModule : public cmangos_modules::Module
+    class ImmersiveModule : public Module
     {
     public:
         ImmersiveModule();

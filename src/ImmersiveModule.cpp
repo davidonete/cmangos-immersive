@@ -18,7 +18,7 @@
 #include "playerbot/ChatHelper.h"
 #endif
 
-namespace immersive_module
+namespace cmangos_module
 {
     bool IsMaxLevel(Player* player)
     {
@@ -111,7 +111,7 @@ namespace immersive_module
     }
 
     ImmersiveModule::ImmersiveModule()
-    : cmangos_modules::Module("Immersive")
+    : Module("Immersive")
     , updateDelay(0U)
     {
         statValues[STAT_STRENGTH] = "Strength";
@@ -126,7 +126,7 @@ namespace immersive_module
         return new ImmersiveModuleConfig();
     }
 
-    const immersive_module::ImmersiveModuleConfig* ImmersiveModule::GetConfig() const
+    const ImmersiveModuleConfig* ImmersiveModule::GetConfig() const
     {
         return (ImmersiveModuleConfig*)GetConfigInternal();
     }

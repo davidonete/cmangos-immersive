@@ -1,7 +1,7 @@
 #pragma once
 #include "ModuleConfig.h"
 
-namespace immersive_module
+namespace cmangos_module
 {
     enum ImmersiveEffectiveChance
     {
@@ -76,7 +76,7 @@ namespace immersive_module
         LANG_IMMERSIVE_MANUAL_ATTR_REDUCE_PCT
     };
 
-    class ImmersiveModuleConfig : public cmangos_modules::ModuleConfig
+    class ImmersiveModuleConfig : public ModuleConfig
     {
     public:
         ImmersiveModuleConfig();

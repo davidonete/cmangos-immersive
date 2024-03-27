@@ -1,9 +1,9 @@
 #include "ImmersiveModuleConfig.h"
 
-namespace immersive_module
+namespace cmangos_module
 {
     ImmersiveModuleConfig::ImmersiveModuleConfig()
-    : cmangos_modules::ModuleConfig("immersive.conf")
+    : ModuleConfig("immersive.conf")
     , enabled(false)
     , manualAttributes(false)
     , manualAttributesPercent(0)
