@@ -567,16 +567,16 @@ namespace cmangos_module
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, resetAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_RESET_STATS_MENU, resetAttributesAreYouSureStr, false);
                         const std::string reduceAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_REDUCE);
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, reduceAttributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_REDUCE_STATS_MENU, "", false);
-                        const std::string improveAttributeStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_IMPROVE);
-                        const std::string improveStrengthStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH));
+                        std::string improveAttributeStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_IMPROVE); improveAttributeStr += " (%d)";
+                        const std::string improveStrengthStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH), GetTotalStatsValue(player, STAT_STRENGTH));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveStrengthStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_STRENGTH, "", false);
-                        const std::string improveAgilityStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AGILITY));
+                        const std::string improveAgilityStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AGILITY), GetTotalStatsValue(player, STAT_AGILITY));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveAgilityStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_AGILITY, "", false);
-                        const std::string improveStaminaStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STAMINA));
+                        const std::string improveStaminaStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_STAMINA), GetTotalStatsValue(player, STAT_STAMINA));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveStaminaStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_STAMINA, "", false);
-                        const std::string improveIntellectStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_INTELLECT));
+                        const std::string improveIntellectStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_INTELLECT), GetTotalStatsValue(player, STAT_INTELLECT));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveIntellectStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_INTELLECT, "", false);
-                        const std::string improveSpiritStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SPIRIT));
+                        const std::string improveSpiritStr = helper::FormatString(improveAttributeStr.c_str(), player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_SPIRIT), GetTotalStatsValue(player, STAT_SPIRIT));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_TRAINER, improveSpiritStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_IMPROVE_SPIRIT, "", false);
                         player->GetPlayerMenu()->SendGossipMenu(IMMERSIVE_NPC_TEXT, creature->GetObjectGuid());
                         return true;
@@ -1702,8 +1702,6 @@ namespace cmangos_module
             formatMoney(purchaseCost).c_str()
         ));
 
-        PrintUsedStats(player);
-
         player->InitStatsForLevel(true);
         player->UpdateAllStats();
         player->ModifyMoney(-(int32)purchaseCost);
@@ -1869,7 +1867,22 @@ namespace cmangos_module
         return modifier;
     }
 
-    void ImmersiveModule::SendSysMessage(Player *player, const std::string& message)
+    uint32 ImmersiveModule::GetTotalStatsValue(Player* player, uint8 type)
+    {
+        if (player)
+        {
+            const uint32 owner = player->GetObjectGuid().GetRawValue();
+            const uint32 modifier = GetModifierValue(owner);
+            const PlayerInfo* info = GetPlayerInfo(player->getRace(), player->getClass());
+            const uint32 baseStats = info->levelInfo[0].stats[type];
+            const uint32 addedStats = GetStatsValue(owner, ImmersiveModule::statValues[type]);
+            return (baseStats + addedStats) * modifier / 100;
+        }
+
+        return 0;
+    }
+
+    void ImmersiveModule::SendSysMessage(Player* player, const std::string& message)
     {
     #ifdef ENABLE_PLAYERBOTS
         if (player->GetPlayerbotAI())

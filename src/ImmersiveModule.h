@@ -76,6 +76,7 @@ namespace cmangos_module
 
         uint32 CalculateEffectiveChanceDelta(const Unit* unit);
         uint32 GetModifierValue(uint32 owner);
+        uint32 GetTotalStatsValue(Player* player, uint8 type);
         uint32 GetStatsValue(uint32 owner, uint8 type);
         uint32 GetStatsValue(uint32 owner, const std::string& type);
         void SetStatsValue(uint32 owner, uint8 type, uint32 value);
