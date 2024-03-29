@@ -153,15 +153,13 @@ namespace cmangos_module
         {
             if (player)
             {
-                // Don't get extra fall damage on battlegrounds
-                if (player->InBattleGround())
+                // Don't get extra fall damage on battlegrounds or arenas
+                if (helper::InPvpMap(player))
                     return false;
 
-    #if EXPANSION > 0
-                // Don't get extra fall damage on arenas
-                if (player->InArena())
+                // Don't get extra fall damage on dungeons or raids
+                if (helper::InDungeon(player) || helper::InRaid(player))
                     return false;
-    #endif
 
     #ifdef ENABLE_PLAYERBOTS
                 // Don't apply extra fall damage on bots
