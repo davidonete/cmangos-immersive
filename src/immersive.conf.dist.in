@@ -114,10 +114,46 @@
 #		The maximum level a player can reach (Can't be higher than 100)
 #		Default: 100
 #
+#	Immersive.InfiniteLevelingRaidBossMult
+#		The multiplier of xp given when killing a raid boss (must be positive)
+#		Default: 10.0
+#
+#	Immersive.InfiniteLevelingRaidEliteMult
+#		The multiplier of xp given when killing a raid elite (must be positive)
+#		Default: 1.0
+#
+#	Immersive.InfiniteLevelingRaidNonEliteMult
+#		The multiplier of xp given when killing a raid enemy (must be positive)
+#		Default: 0.25
+#
+#	Immersive.InfiniteLevelingDungeonBossMult
+#		The multiplier of xp given when killing a dungeon boss (must be positive)
+#		Default: 5.0
+#
+#	Immersive.InfiniteLevelingDungeonEliteMult
+#		The multiplier of xp given when killing a dungeon elite (must be positive)
+#		Default: 1.0
+#
+#	Immersive.InfiniteLevelingDungeonNonEliteMult
+#		The multiplier of xp given when killing a dungeon enemy (must be positive)
+#		Default: 0.25
+#
 #	Immersive.GiveXPOnPvp
 #		If player kills should give experience
 #       Default: 0 (Disabled)
 #                1 (Enabled)
+#
+#	Immersive.GiveXPOnPvpBgMult
+#		The multiplier of xp given when killing a player in a battleground (must be positive)
+#		Default: 2.0
+#
+#	Immersive.GiveXPOnPvpArenaMult
+#		The multiplier of xp given when killing a player in an arena (must be positive)
+#		Default: 1.0
+#
+#	Immersive.GiveXPOnPvpWorldMult
+#		The multiplier of xp given when killing a player in the open world (must be positive)
+#		Default: 1.0
 #
 ###################################################################################################################
 
@@ -147,4 +183,13 @@ Immersive.DisableOfflineRespawn = 0
 Immersive.DisableInstanceRespawn = 0
 Immersive.InfiniteLeveling = 0
 Immersive.InfiniteLevelingMax = 100
+Immersive.InfiniteLevelingRaidBossMult = 10.0
+Immersive.InfiniteLevelingRaidEliteMult = 1.0
+Immersive.InfiniteLevelingRaidNonEliteMult = 0.25
+Immersive.InfiniteLevelingDungeonBossMult = 5.0
+Immersive.InfiniteLevelingDungeonEliteMult = 1.0
+Immersive.InfiniteLevelingDungeonNonEliteMult = 0.25
 Immersive.GiveXPOnPvp = 0
+Immersive.GiveXPOnPvpBgMult = 2.0
+Immersive.GiveXPOnPvpArenaMult = 1.0
+Immersive.GiveXPOnPvpWorldMult = 1.0

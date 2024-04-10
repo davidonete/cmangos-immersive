@@ -29,7 +29,16 @@ namespace cmangos_module
     , disableInstanceRespawn(false)
     , infiniteLeveling(false)
     , infiniteLevelingMax(0)
+    , infiniteLevelingRaidBossMult(0.0f)
+    , infiniteLevelingRaidEliteMult(0.0f)
+    , infiniteLevelingRaidNonEliteMult(0.0f)
+    , infiniteLevelingDungeonBossMult(0.0f)
+    , infiniteLevelingDungeonEliteMult(0.0f)
+    , infiniteLevelingDungeonNonEliteMult(0.0f)
     , xpOnPvPKill(false)
+    , xpOnPvPKillBgMult(0.0f)
+    , xpOnPvPKillArenaMult(0.0f)
+    , xpOnPvPKillWorldMult(0.0f)
     {
 
     }
@@ -61,7 +70,16 @@ namespace cmangos_module
         disableInstanceRespawn = config.GetBoolDefault("Immersive.DisableInstanceRespawn", false);
         infiniteLeveling = config.GetBoolDefault("Immersive.InfiniteLeveling", false);
         infiniteLevelingMax = config.GetIntDefault("Immersive.InfiniteLevelingMax", 100);
+        infiniteLevelingRaidBossMult = config.GetFloatDefault("Immersive.InfiniteLevelingRaidBossMult", 0.0f);
+        infiniteLevelingRaidEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingRaidEliteMult", 0.0f);
+        infiniteLevelingRaidNonEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingRaidNonEliteMult", 0.0f);
+        infiniteLevelingDungeonBossMult = config.GetFloatDefault("Immersive.InfiniteLevelingDungeonBossMult", 0.0f);
+        infiniteLevelingDungeonEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingDungeonEliteMult", 0.0f);
+        infiniteLevelingDungeonNonEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingDungeonNonEliteMult", 0.0f);
         xpOnPvPKill = config.GetBoolDefault("Immersive.GiveXPOnPvp", false);
+        xpOnPvPKillBgMult = config.GetFloatDefault("Immersive.GiveXPOnPvpBgMult", 0.0f);
+        xpOnPvPKillArenaMult = config.GetFloatDefault("Immersive.GiveXPOnPvpArenaMult", 0.0f);
+        xpOnPvPKillWorldMult = config.GetFloatDefault("Immersive.GiveXPOnPvpWorldMult", 0.0f);
         return true;
     }
 }

@@ -108,6 +108,15 @@ namespace cmangos_module
         bool disableInstanceRespawn;
         bool infiniteLeveling;
         uint32 infiniteLevelingMax;
+        float infiniteLevelingRaidBossMult;
+        float infiniteLevelingRaidEliteMult;
+        float infiniteLevelingRaidNonEliteMult;
+        float infiniteLevelingDungeonBossMult;
+        float infiniteLevelingDungeonEliteMult;
+        float infiniteLevelingDungeonNonEliteMult;
         bool xpOnPvPKill;
+        float xpOnPvPKillBgMult;
+        float xpOnPvPKillArenaMult;
+        float xpOnPvPKillWorldMult;
     };
 }

@@ -688,7 +688,7 @@ namespace cmangos_module
         }
     }
 
-    uint32 XPGain(const Unit* unit, Unit* target)
+    uint32 XPGain(const Unit* unit, Unit* target, const ImmersiveModuleConfig* config)
     {
         Player* player = nullptr;
         if (unit && unit->IsPlayer())
@@ -745,18 +745,18 @@ namespace cmangos_module
                             const CreatureInfo* creatureInfo = creatureTarget->GetCreatureInfo();
                             if (creatureInfo && creatureInfo->Rank == CREATURE_ELITE_WORLDBOSS)
                             {
-                                xpGain *= 10.0f;
+                                xpGain *= config->infiniteLevelingRaidBossMult;
                             }
                             // Raid elite
                             else
                             {
-                                xpGain *= 1.0f;
+                                xpGain *= config->infiniteLevelingRaidEliteMult;
                             }
                         }
                         // Raid non-elite creature
                         else
                         {
-                            xpGain *= 0.25f;
+                            xpGain *= config->infiniteLevelingRaidNonEliteMult;
                         }
                     }
                     else if (dungeonMap->IsDungeon())
@@ -766,18 +766,18 @@ namespace cmangos_module
                             // Dungeon boss
                             if (sObjectMgr.IsEncounter(creatureTarget->GetEntry(), creatureTarget->GetMapId()))
                             {
-                                xpGain *= 5.0f;
+                                xpGain *= config->infiniteLevelingDungeonBossMult;
                             }
                             // Dungeon elite
                             else
                             {
-                                xpGain *= 1.0f;
+                                xpGain *= config->infiniteLevelingDungeonEliteMult;
                             }
                         }
                         // Dungeon non-elite creature
                         else
                         {
-                            xpGain *= 0.25f;
+                            xpGain *= config->infiniteLevelingDungeonNonEliteMult;
                         }
                     }
 
@@ -797,20 +797,20 @@ namespace cmangos_module
                     if (bg)
                     {
                         maxPlayers = bg->GetMaxPlayers();
-                        xpGain *= 2.0f;
+                        xpGain *= config->xpOnPvPKillBgMult;
                     }
                 }
 #if EXPANSION > 0
                 // Arena player kill
                 else if (player->InArena())
                 {
-                    xpGain *= 1.0f;
+                    xpGain *= config->xpOnPvPKillArenaMult;
                 }
 #endif
                 // Open world player kill
                 else
                 {
-                    xpGain *= 1.0f;
+                    xpGain *= config->xpOnPvPKillWorldMult;
                 }
 
                 xpGain *= maxPlayers;
@@ -847,10 +847,10 @@ namespace cmangos_module
                         {
                             // Calculate the exp given (formula from MaNGOS::XP::Gain)
                             Creature* creatureVictim = (Creature*)victim;
-                            player->GiveXP(XPGain(player, creatureVictim), creatureVictim);
+                            player->GiveXP(XPGain(player, creatureVictim, GetConfig()), creatureVictim);
                             if (Pet* pet = player->GetPet())
                             {
-                                pet->GivePetXP(XPGain(pet, creatureVictim));
+                                pet->GivePetXP(XPGain(pet, creatureVictim, GetConfig()));
                             }
 
                             return true;
@@ -884,10 +884,10 @@ namespace cmangos_module
                     if (playerLevel <= victimLevel + 3)
                     {
                         // Calculate the exp given (formula from MaNGOS::XP::Gain)
-                        player->GiveXP(XPGain(player, playerVictim), nullptr);
+                        player->GiveXP(XPGain(player, playerVictim, GetConfig()), nullptr);
                         if (Pet* pet = player->GetPet())
                         {
-                            pet->GivePetXP(XPGain(pet, nullptr));
+                            pet->GivePetXP(XPGain(pet, nullptr, GetConfig()));
                         }
                     }
                 }
