@@ -1957,19 +1957,20 @@ namespace cmangos_module
     {
         bool first = true, needMsg = false;
         std::ostringstream out; out << "|cffffff00";
-    #ifdef ENABLE_PLAYERBOTS
-        for (PlayerBotMap::const_iterator i = player->GetPlayerbotMgr()->GetPlayerBotsBegin(); i != player->GetPlayerbotMgr()->GetPlayerBotsEnd(); ++i)
+#ifdef ENABLE_PLAYERBOTS
+        player->GetPlayerbotMgr()->ForEachPlayerbot([&](Player* bot)
         {
-            Player *bot = i->second;
-            if (bot->GetGroup() && bot->GetGroup() == player->GetGroup()) continue;
+            if (bot->GetGroup() && bot->GetGroup() == player->GetGroup()) 
+                return;
+
             if (action->Run(player, bot))
             {
                 if (!first)  out << ", "; else first = false;
                 out << bot->GetName();
                 needMsg = true;
             }
-        }
-    #endif
+        });
+#endif
 
         if (!needMsg) return;
         out << "|cffffff00: " << action->GetActionMessage(player);
