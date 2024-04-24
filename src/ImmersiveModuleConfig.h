@@ -114,6 +114,8 @@ namespace cmangos_module
         float infiniteLevelingDungeonBossMult;
         float infiniteLevelingDungeonEliteMult;
         float infiniteLevelingDungeonNonEliteMult;
+        float infiniteLevelingWorldEliteMult;
+        float infiniteLevelingWorldNonEliteMult;
         bool xpOnPvPKill;
         float xpOnPvPKillBgMult;
         float xpOnPvPKillArenaMult;

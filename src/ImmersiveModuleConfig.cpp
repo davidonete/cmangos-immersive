@@ -35,6 +35,8 @@ namespace cmangos_module
     , infiniteLevelingDungeonBossMult(0.0f)
     , infiniteLevelingDungeonEliteMult(0.0f)
     , infiniteLevelingDungeonNonEliteMult(0.0f)
+    , infiniteLevelingWorldEliteMult(0.0f)
+    , infiniteLevelingWorldNonEliteMult(0.0f)
     , xpOnPvPKill(false)
     , xpOnPvPKillBgMult(0.0f)
     , xpOnPvPKillArenaMult(0.0f)
@@ -76,6 +78,8 @@ namespace cmangos_module
         infiniteLevelingDungeonBossMult = config.GetFloatDefault("Immersive.InfiniteLevelingDungeonBossMult", 0.0f);
         infiniteLevelingDungeonEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingDungeonEliteMult", 0.0f);
         infiniteLevelingDungeonNonEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingDungeonNonEliteMult", 0.0f);
+        infiniteLevelingWorldEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingWorldEliteMult", 0.0f);
+        infiniteLevelingWorldNonEliteMult = config.GetFloatDefault("Immersive.InfiniteLevelingWorldNonEliteMult", 0.0f);
         xpOnPvPKill = config.GetBoolDefault("Immersive.GiveXPOnPvp", false);
         xpOnPvPKillBgMult = config.GetFloatDefault("Immersive.GiveXPOnPvpBgMult", 0.0f);
         xpOnPvPKillArenaMult = config.GetFloatDefault("Immersive.GiveXPOnPvpArenaMult", 0.0f);

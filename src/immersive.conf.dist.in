@@ -138,6 +138,14 @@
 #		The multiplier of xp given when killing a dungeon enemy (must be positive)
 #		Default: 0.25
 #
+#	Immersive.InfiniteLevelingWorldEliteMult
+#		The multiplier of xp given when killing a world elite (must be positive)
+#		Default: 1.0
+#
+#	Immersive.InfiniteLevelingWorldNonEliteMult
+#		The multiplier of xp given when killing a world enemy (must be positive)
+#		Default: 0.25
+#
 #	Immersive.GiveXPOnPvp
 #		If player kills should give experience
 #       Default: 0 (Disabled)
@@ -189,6 +197,8 @@ Immersive.InfiniteLevelingRaidNonEliteMult = 0.25
 Immersive.InfiniteLevelingDungeonBossMult = 5.0
 Immersive.InfiniteLevelingDungeonEliteMult = 1.0
 Immersive.InfiniteLevelingDungeonNonEliteMult = 0.25
+Immersive.InfiniteLevelingWorldEliteMult = 1.0
+Immersive.InfiniteLevelingWorldNonEliteMult = 0.25
 Immersive.GiveXPOnPvp = 0
 Immersive.GiveXPOnPvpBgMult = 2.0
 Immersive.GiveXPOnPvpArenaMult = 1.0

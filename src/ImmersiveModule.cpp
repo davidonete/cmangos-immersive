@@ -780,6 +780,17 @@ namespace cmangos_module
                             xpGain *= config->infiniteLevelingDungeonNonEliteMult;
                         }
                     }
+                    else
+                    {
+                        if (creatureTarget->IsElite())
+                        {
+                            xpGain *= config->infiniteLevelingWorldEliteMult;
+                        }
+                        else
+                        {
+                            xpGain *= config->infiniteLevelingWorldNonEliteMult;
+                        }
+                    }
 
                     xpGain *= maxPlayers;
                 }
