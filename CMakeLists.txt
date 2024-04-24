@@ -56,6 +56,7 @@ target_link_libraries(${LIBRARY_NAME}
 )
 
 set_target_properties(${LIBRARY_NAME} PROPERTIES PROJECT_LABEL "Immersive")
+set_target_properties(${LIBRARY_NAME} PROPERTIES FOLDER "Modules")
 
 if(UNIX)
   # Both systems don't have libdl and don't need them
