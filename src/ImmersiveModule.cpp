@@ -300,7 +300,7 @@ namespace cmangos_module
         return value + (uint32)(value * percent / 100.0f);
     }
 
-    #ifdef ENABLE_PLAYERBOTS
+#ifdef ENABLE_PLAYERBOTS
     class OnGiveXPAction : public ImmersiveAction
     {
     public:
@@ -341,11 +341,11 @@ namespace cmangos_module
     private:
         int32 value;
     };
-    #endif
+#endif
 
     void ImmersiveModule::OnGiveXP(Player* player, uint32 xp, Creature* victim)
     {
-    #ifdef ENABLE_PLAYERBOTS
+#ifdef ENABLE_PLAYERBOTS
         if (!GetConfig()->enabled)
             return;
 
@@ -364,48 +364,44 @@ namespace cmangos_module
 
         OnGiveXPAction action(botXp, GetConfig());
         RunAction(player, &action);
-    #endif
+#endif
     }
 
     void ImmersiveModule::OnGiveLevel(Player* player, uint32 level)
     {
         if (GetConfig()->enabled)
         {
-            if (GetConfig()->manualAttributes)
+            if (player)
             {
+                if (GetConfig()->infiniteLeveling)
+                {
+                    player->SetUInt32Value(PLAYER_NEXT_LEVEL_XP, CalculateNextLevelXP(level));
+                }
+
+                if (GetConfig()->manualAttributes)
+                {
 #ifdef ENABLE_PLAYERBOTS
-                if (!player->isRealPlayer())
-                    return;
+                    if (!player->isRealPlayer())
+                        return;
 #endif
 
-                const uint32 usedStats = GetUsedStats(player);
-                const uint32 totalStats = GetTotalStats(player);
-                const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
-                if (availablePoints > 0)
-                {
-                    SendSysMessage(player, helper::FormatString
-                    (
-                        sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
-                        availablePoints
-                    ));
-                }
-            }
-
-            if (GetConfig()->infiniteLeveling)
-            {
-                if (level > DEFAULT_MAX_LEVEL && level <= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
-                {
-                    constexpr float increaseRate = 0.04f;
-                    const uint32 levelsAboveMax = level - DEFAULT_MAX_LEVEL;
-                    uint32 nextLevelXP = sObjectMgr.GetXPForLevel(DEFAULT_MAX_LEVEL);
-                    nextLevelXP = (uint32)(nextLevelXP * std::pow(1 + increaseRate, levelsAboveMax));
-                    player->SetUInt32Value(PLAYER_NEXT_LEVEL_XP, nextLevelXP);
+                    const uint32 usedStats = GetUsedStats(player);
+                    const uint32 totalStats = GetTotalStats(player);
+                    const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
+                    if (availablePoints > 0)
+                    {
+                        SendSysMessage(player, helper::FormatString
+                        (
+                            sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_POINTS_ADDED, player->GetSession()->GetSessionDbLocaleIndex()),
+                            availablePoints
+                        ));
+                    }
                 }
             }
         }
     }
 
-    #ifdef ENABLE_PLAYERBOTS
+#ifdef ENABLE_PLAYERBOTS
     class OnGiveMoneyAction : public ImmersiveAction
     {
     public:
@@ -435,11 +431,11 @@ namespace cmangos_module
     private:
         int32 value;
     };
-    #endif
+#endif
 
     void ImmersiveModule::OnModifyMoney(Player* player, int32 diff)
     {
-    #ifdef ENABLE_PLAYERBOTS
+#ifdef ENABLE_PLAYERBOTS
         if (!GetConfig()->enabled)
             return;
 
@@ -457,10 +453,10 @@ namespace cmangos_module
 
         OnGiveMoneyAction action(botMoney, GetConfig());
         RunAction(player, &action);
-    #endif
+#endif
     }
 
-    #ifdef ENABLE_PLAYERBOTS
+#ifdef ENABLE_PLAYERBOTS
     class OnRewardQuestAction : public ImmersiveAction
     {
     public:
@@ -505,11 +501,11 @@ namespace cmangos_module
     private:
         Quest const* quest;
     };
-    #endif
+#endif
 
     void ImmersiveModule::OnRewardQuest(Player* player, const Quest* quest)
     {
-    #ifdef ENABLE_PLAYERBOTS
+#ifdef ENABLE_PLAYERBOTS
         if (!GetConfig()->enabled)
             return;
 
@@ -524,7 +520,7 @@ namespace cmangos_module
 
         OnRewardQuestAction action(quest, GetConfig());
         RunAction(player, &action);
-    #endif
+#endif
     }
 
     void ImmersiveModule::OnGossipHello(Player* player, Creature* creature)
@@ -668,22 +664,51 @@ namespace cmangos_module
 
     void ImmersiveModule::OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info)
     {
-        if (GetConfig()->enabled && GetConfig()->manualAttributes)
+        if (GetConfig()->enabled)
         {
-    #ifdef ENABLE_PLAYERBOTS
-            // Don't use custom stats on random bots
-            if (IsRandomBot(player))
-                return;
-    #endif
-
-            const PlayerInfo* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
-            info = playerInfo->levelInfo[0];
-
-            uint32 owner = player->GetObjectGuid().GetRawValue();
-            int modifier = GetModifierValue(owner);
-            for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
+            if (player)
             {
-                info.stats[i] += GetStatsValue(owner, (Stats)i) * modifier / 100;
+#ifdef ENABLE_PLAYERBOTS
+                // Calculate randombots stats when above the max level
+                const bool isRandomBot = IsRandomBot(player);
+                if (GetConfig()->infiniteLeveling && isRandomBot)
+                {
+                    if (player->GetLevel() > DEFAULT_MAX_LEVEL)
+                    {
+                        const uint8 levelDiff = player->GetLevel() - DEFAULT_MAX_LEVEL;
+                        constexpr uint8 statsPerLevel = 2;
+
+                        const PlayerInfo* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
+                        info = playerInfo->levelInfo[DEFAULT_MAX_LEVEL];
+
+                        uint8 stat = STAT_STRENGTH;
+                        for (uint32 stats = (levelDiff * statsPerLevel); stats > 0; stats--)
+                        {
+                            info.stats[stat] += 1;
+                            stat = stat == STAT_SPIRIT ? STAT_STRENGTH : stat + 1;
+                        }
+                    }
+                }
+#endif
+
+                if (GetConfig()->manualAttributes)
+                {
+#ifdef ENABLE_PLAYERBOTS
+                    // Don't use custom stats on random bots
+                    if (isRandomBot)
+                        return;
+#endif
+
+                    const PlayerInfo* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
+                    info = playerInfo->levelInfo[0];
+
+                    uint32 owner = player->GetObjectGuid().GetRawValue();
+                    int modifier = GetModifierValue(owner);
+                    for (uint8 i = STAT_STRENGTH; i < MAX_STATS; ++i)
+                    {
+                        info.stats[i] += GetStatsValue(owner, (Stats)i) * modifier / 100;
+                    }
+                }
             }
         }
     }
@@ -903,6 +928,14 @@ namespace cmangos_module
                     }
                 }
             }
+        }
+    }
+
+    void ImmersiveModule::OnLoadFromDB(Player* player)
+    {
+        if (GetConfig()->enabled && GetConfig()->infiniteLeveling && player)
+        {
+            player->SetUInt32Value(PLAYER_NEXT_LEVEL_XP, CalculateNextLevelXP(player->GetLevel()));
         }
     }
 
@@ -2072,6 +2105,21 @@ namespace cmangos_module
                     }
                 }
             }
+        }
+    }
+
+    uint32 ImmersiveModule::CalculateNextLevelXP(uint32 level) const
+    {
+        if (level > DEFAULT_MAX_LEVEL && level <= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+        {
+            constexpr float increaseRate = 0.04f;
+            const uint32 levelsAboveMax = level - DEFAULT_MAX_LEVEL;
+            uint32 nextLevelXP = sObjectMgr.GetXPForLevel(DEFAULT_MAX_LEVEL);
+            return (uint32)(nextLevelXP * std::pow(1 + increaseRate, levelsAboveMax));
+        }
+        else
+        {
+            return sObjectMgr.GetXPForLevel(level);
         }
     }
 

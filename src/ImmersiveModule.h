@@ -49,6 +49,7 @@ namespace cmangos_module
         void OnGetPlayerLevelInfo(Player* player, PlayerLevelInfo& info) override;
         bool OnPreRewardPlayerAtKill(Player* player, Unit* victim) override;
         void OnRewardPlayerAtKill(Player* player, Unit* victim) override;
+        void OnLoadFromDB(Player* player) override;
         void OnSaveToDB(Player* player) override;
 
         // Creature Hooks
@@ -96,6 +97,8 @@ namespace cmangos_module
         void SendSysMessage(Player *player, const std::string& message);
         void RunAction(Player* player, ImmersiveAction* action);
         void SyncAccountReputation(Player* player);
+
+        uint32 CalculateNextLevelXP(uint32 level) const;
 
     private:
         std::map<uint8, std::string> statValues;
