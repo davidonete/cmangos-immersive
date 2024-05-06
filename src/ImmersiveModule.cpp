@@ -13,6 +13,7 @@
 #include "World/World.h"
 
 #ifdef ENABLE_PLAYERBOTS
+#include "playerbot/AiFactory.h"
 #include "playerbot/PlayerbotAIConfig.h"
 #include "playerbot/PlayerbotAI.h"
 #include "playerbot/ChatHelper.h"
