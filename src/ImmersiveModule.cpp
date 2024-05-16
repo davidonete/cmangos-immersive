@@ -882,12 +882,21 @@ namespace cmangos_module
                     {
                         if (victim->GetLevel() > DEFAULT_MAX_LEVEL - 5)
                         {
+                            player->RewardHonor(victim, 1);
+
                             // Calculate the exp given (formula from MaNGOS::XP::Gain)
                             Creature* creatureVictim = (Creature*)victim;
+                            player->RewardReputation(creatureVictim, 1);
                             player->GiveXP(XPGain(player, creatureVictim, GetConfig()), creatureVictim);
                             if (Pet* pet = player->GetPet())
                             {
                                 pet->GivePetXP(XPGain(pet, creatureVictim, GetConfig()));
+                            }
+
+                            // normal creature (not pet/etc) can be only in !PvP case
+                            if (CreatureInfo const* normalInfo = creatureVictim->GetCreatureInfo())
+                            {
+                                player->KilledMonster(normalInfo, creatureVictim);
                             }
 
                             return true;
