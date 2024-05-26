@@ -78,6 +78,20 @@ bool IsRandomBot(const Unit* unit)
 }
 #endif
 
+bool IsClassTrainer(const Creature* creature, const Player* player)
+{
+    if (creature && player)
+    {
+        const auto* creatureInfo = creature->GetCreatureInfo();
+        if (creatureInfo && creatureInfo->TrainerType == TRAINER_TYPE_CLASS && creatureInfo->TrainerClass == player->getClass())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 namespace cmangos_module
 {
     ImmersiveModule::ImmersiveModule()
@@ -531,7 +545,7 @@ namespace cmangos_module
             if (player && creature)
             {
                 // Check if speaking with a class trainer
-                if (!creature->IsTrainerOf(player, false))
+                if (!IsClassTrainer(creature, player))
                     return;
 
                 const std::string manageAtributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_MANAGE);
@@ -547,8 +561,8 @@ namespace cmangos_module
             if (player && creature)
             {
                 // Check if speaking with a class trainer
-                if (!creature->IsTrainerOf(player, false))
-                    return false;
+                if (!IsClassTrainer(creature, player))
+                    return;
 
                 switch (action)
                 {
