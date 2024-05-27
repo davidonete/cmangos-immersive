@@ -562,7 +562,7 @@ namespace cmangos_module
             {
                 // Check if speaking with a class trainer
                 if (!IsClassTrainer(creature, player))
-                    return;
+                    return false;
 
                 switch (action)
                 {
