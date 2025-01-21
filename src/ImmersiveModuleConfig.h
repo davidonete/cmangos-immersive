@@ -89,6 +89,7 @@ namespace cmangos_module
         uint32 manualAttributesIncrease;
         uint32 manualAttributesCostMult;
         uint32 manualAttributesMaxPoints;
+        uint32 manualAttributesBaseAttributes;
         bool accountReputation;
         uint32 sharedXpPercent;
         uint32 sharedMoneyPercent;

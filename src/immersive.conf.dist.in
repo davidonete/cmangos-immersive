@@ -26,6 +26,10 @@
 #		The total amount of attributes that you can get at max level
 #       Default: 0 (Automatically assign it based on blizzlike stats) (A good blizzlike value would be 390)
 #
+#   Immersive.ManualAttributesBaseAttributes
+#		If we use a specific amount of base stats on each stat
+#       Default: 0 (Use blizzlike class and race base stats)
+#
 #   Immersive.AccountReputation
 #		The reputation you earn with a character get shared between all characters of your account
 #       Default: 0 (Disabled)
@@ -171,6 +175,7 @@ Immersive.ManualAttributesIncrease = 5
 Immersive.ManualAttributesPercent = 100
 Immersive.ManualAttributesCostMult = 5
 Immersive.ManualAttributesMaxPoints = 0
+Immersive.ManualAttributesBaseAttributes = 0
 Immersive.AccountReputation = 0
 Immersive.SharedXpPercent = 0
 Immersive.SharedRepPercent = 0

@@ -10,6 +10,7 @@ namespace cmangos_module
     , manualAttributesIncrease(0)
     , manualAttributesCostMult(0)
     , manualAttributesMaxPoints(0)
+    , manualAttributesBaseAttributes(0)
     , sharedXpPercent(0)
     , sharedMoneyPercent(0)
     , accountReputation(false)
@@ -53,6 +54,7 @@ namespace cmangos_module
         manualAttributesIncrease = config.GetIntDefault("Immersive.ManualAttributesIncrease", 5);
         manualAttributesCostMult = config.GetIntDefault("Immersive.ManualAttributesCostMult", 5);
         manualAttributesMaxPoints = config.GetIntDefault("Immersive.ManualAttributesMaxPoints", 0);
+        manualAttributesBaseAttributes = config.GetIntDefault("Immersive.ManualAttributesBaseAttributes", 0);
         accountReputation = config.GetBoolDefault("Immersive.AccountReputation", false);
         sharedXpPercent = config.GetIntDefault("Immersive.SharedXpPercent", 0);
         sharedMoneyPercent = config.GetIntDefault("Immersive.SharedMoneyPercent", 0);

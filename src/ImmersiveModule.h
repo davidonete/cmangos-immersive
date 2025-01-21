@@ -85,6 +85,8 @@ namespace cmangos_module
         uint32 GetTotalStats(Player* player, uint8 level = 0);
         uint32 GetUsedStats(Player* player);
         uint32 GetStatCost(Player* player, uint8 level = 0, uint32 usedStats = 0);
+        uint32 GetAvailableStats(Player* player);
+        PlayerLevelInfo GetBaseStats(uint32 race, uint32 class_);
         void IncreaseStat(Player* player, uint32 type);
         void ResetStats(Player* player);
         void ChangeModifier(Player* player, uint32 type);

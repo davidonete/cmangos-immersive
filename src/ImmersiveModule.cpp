@@ -400,9 +400,7 @@ namespace cmangos_module
                         return;
 #endif
 
-                    const uint32 usedStats = GetUsedStats(player);
-                    const uint32 totalStats = GetTotalStats(player);
-                    const uint32 availablePoints = (totalStats > usedStats) ? totalStats - usedStats : 0;
+                    const uint32 availablePoints = GetAvailableStats(player);
                     if (availablePoints > 0)
                     {
                         SendSysMessage(player, helper::FormatString
@@ -569,7 +567,8 @@ namespace cmangos_module
                     case IMMERSIVE_GOSSIP_OPTION_MENU:
                     {
                         player->GetPlayerMenu()->ClearMenus();
-                        const std::string checkAtributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_CHECK_CURRENT);
+                        std::string checkAtributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_CHECK_CURRENT); checkAtributesStr += " (%d)";
+                        checkAtributesStr = helper::FormatString(checkAtributesStr.c_str(), GetAvailableStats(player));
                         player->GetPlayerMenu()->GetGossipMenu().AddMenuItem(GOSSIP_ICON_CHAT, checkAtributesStr, GOSSIP_SENDER_MAIN, IMMERSIVE_GOSSIP_OPTION_CHECK_CURRENT, "", false);
                         const std::string resetAttributesStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN);
                         const std::string resetAttributesAreYouSureStr = player->GetSession()->GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_UNLEARN_SURE);
@@ -714,9 +713,7 @@ namespace cmangos_module
                         return;
 #endif
 
-                    const PlayerInfo* playerInfo = GetPlayerInfo(player->getRace(), player->getClass());
-                    info = playerInfo->levelInfo[0];
-
+                    info = GetBaseStats(player->getRace(), player->getClass());
                     uint32 owner = player->GetObjectGuid().GetRawValue();
                     int modifier = GetModifierValue(owner);
                     for (uint8 i = STAT_STRENGTH; i < MAX_STATS; ++i)
@@ -1618,7 +1615,7 @@ namespace cmangos_module
         SendSysMessage(player, helper::FormatString
         (
             sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_AVAILABLE, player->GetSession()->GetSessionDbLocaleIndex()),
-            (totalStats > usedStats ? totalStats - usedStats : 0),
+            GetAvailableStats(player),
             formatMoney(purchaseCost).c_str())
         );
 
@@ -1642,14 +1639,11 @@ namespace cmangos_module
         bool first = true;
         bool used = false;
 
-        PlayerInfo const* info = GetPlayerInfo(player->getRace(), player->getClass());
-        PlayerLevelInfo level1Info = info->levelInfo[0];
-
+        PlayerLevelInfo baseStats = GetBaseStats(player->getRace(), player->getClass());
         for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
         {
-            uint32 value = level1Info.stats[i];
+            uint32 value = baseStats.stats[i];
             value += GetStatsValue(owner, (Stats)i) * modifier / 100;
-            if (!value) continue;
             if (!first) out << ", "; else first = false;
             const uint32 langStat = LANG_IMMERSIVE_MANUAL_ATTR_STRENGTH + i;
             out << "|cff00ff00+" << value << "|cffffff00 " << sObjectMgr.GetMangosString(langStat, player->GetSession()->GetSessionDbLocaleIndex());
@@ -1736,7 +1730,7 @@ namespace cmangos_module
         uint32 usedStats = GetUsedStats(player);
         uint32 totalStats = GetTotalStats(player);
         uint32 cost = GetStatCost(player);
-        uint32 attributePointsAvailable = (totalStats > usedStats ? totalStats - usedStats : 0);
+        uint32 attributePointsAvailable = GetAvailableStats(player);
         uint32 statIncrease = std::min(GetConfig()->manualAttributesIncrease, attributePointsAvailable);
         uint32 purchaseCost = cost * statIncrease;
 
@@ -1754,10 +1748,7 @@ namespace cmangos_module
 
         uint32 value = GetStatsValue(owner, (Stats)type);
         SetStatsValue(owner, (Stats)type, value + statIncrease);
-
-        usedStats = GetUsedStats(player);
-        totalStats = GetTotalStats(player);
-        attributePointsAvailable = (totalStats > usedStats ? totalStats - usedStats : 0);
+        attributePointsAvailable = GetAvailableStats(player);
 
         SendSysMessage(player, helper::FormatString
         (
@@ -1789,13 +1780,10 @@ namespace cmangos_module
             SetStatsValue(owner, statValues[(Stats)i], 0);
         }
 
-        uint32 usedStats = GetUsedStats(player);
-        uint32 totalStats = GetTotalStats(player);
-
         SendSysMessage(player, helper::FormatString
         (
             sObjectMgr.GetMangosString(LANG_IMMERSIVE_MANUAL_ATTR_RESET, player->GetSession()->GetSessionDbLocaleIndex()),
-            (totalStats > usedStats ? totalStats - usedStats : 0)
+            GetAvailableStats(player)
         ));
 
         player->InitStatsForLevel(true);
@@ -1814,25 +1802,24 @@ namespace cmangos_module
         {
             // Calculate the amount of base stats
             uint32 base = 0;
-            PlayerInfo const* info = GetPlayerInfo(player->getRace(), player->getClass());
-            PlayerLevelInfo level1Info = info->levelInfo[0];
+            const PlayerLevelInfo baseStats = GetBaseStats(player->getRace(), player->getClass());
             for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
             {
-                base += level1Info.stats[i];
+                base += baseStats.stats[i];
             }
 
             return (uint32)((level * (maxStats - base)) / sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
         }
         else
         {
-            PlayerInfo const* info = GetPlayerInfo(player->getRace(), player->getClass());
-            PlayerLevelInfo level1Info = info->levelInfo[0];
+            const PlayerInfo* info = GetPlayerInfo(player->getRace(), player->getClass());
+            const PlayerLevelInfo baseStats = GetBaseStats(player->getRace(), player->getClass());
 
-            PlayerLevelInfo levelCInfo = info->levelInfo[level - 1];
+            PlayerLevelInfo levelStats = level > 1 ? info->levelInfo[level - 1] : baseStats;
             int total = 0;
             for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
             {
-                total += ((int)levelCInfo.stats[i] - (int)level1Info.stats[i]);
+                total += ((int)levelStats.stats[i] - (int)baseStats.stats[i]);
             }
 
             if (level >= DEFAULT_MAX_LEVEL)
@@ -1880,6 +1867,34 @@ namespace cmangos_module
         }
 
         return GetConfig()->manualAttributesCostMult * (usedLevels * usedLevels + 1);
+    }
+
+    uint32 ImmersiveModule::GetAvailableStats(Player* player)
+    {
+        uint32 usedStats = GetUsedStats(player);
+        uint32 totalStats = GetTotalStats(player);
+        return totalStats > usedStats ? totalStats - usedStats : 0;
+    }
+
+    PlayerLevelInfo ImmersiveModule::GetBaseStats(uint32 race, uint32 class_)
+    {
+        PlayerLevelInfo info;
+
+        const uint32 baseStats = GetConfig()->manualAttributesBaseAttributes;
+        if (baseStats > 0)
+        {
+            for (int i = STAT_STRENGTH; i < MAX_STATS; ++i)
+            {
+                info.stats[i] = baseStats;
+            }
+        }
+        else
+        {
+            const PlayerInfo* playerInfo = GetPlayerInfo(race, class_);
+            info = playerInfo->levelInfo[0];
+        }
+
+        return info;
     }
 
     uint32 ImmersiveModule::GetStatsValue(uint32 owner, const std::string& type)
@@ -1939,8 +1954,7 @@ namespace cmangos_module
         {
             const uint32 owner = player->GetObjectGuid().GetRawValue();
             const uint32 modifier = GetModifierValue(owner);
-            const PlayerInfo* info = GetPlayerInfo(player->getRace(), player->getClass());
-            const uint32 baseStats = info->levelInfo[0].stats[type];
+            const uint32 baseStats = GetBaseStats(player->getRace(), player->getClass()).stats[type];
             const uint32 addedStats = GetStatsValue(owner, ImmersiveModule::statValues[type]);
             return (baseStats + addedStats) * modifier / 100;
         }
