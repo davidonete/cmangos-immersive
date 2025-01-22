@@ -164,7 +164,7 @@ namespace cmangos_module
 
     bool ImmersiveModule::OnPreHandleFall(Player* player, const MovementInfo& movementInfo, float lastFallZ, uint32& outDamage)
     {
-        if (GetConfig()->enabled)
+        if (GetConfig()->enabled && GetConfig()->fallDamageMultiplier != 1.0f)
         {
             if (player)
             {
