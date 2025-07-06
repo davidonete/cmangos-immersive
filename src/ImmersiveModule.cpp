@@ -965,6 +965,76 @@ namespace cmangos_module
         SyncAccountReputation(player);
     }
 
+    void ImmersiveModule::OnCast(Spell* spell, Unit* caster, Unit* victim)
+    {
+        if (GetConfig()->enabled && GetConfig()->xpOnGathering)
+        {
+            Player* player = caster && caster->IsPlayer() ? static_cast<Player*>(caster) : nullptr;
+            GameObject* gameObject = spell->m_targets.getGOTarget();
+            if (spell && player && gameObject)
+            {
+                // Check if the player is on the range between the expansion max level and the set max level
+                if (player->GetLevel() < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+                {
+                    if (gameObject->GetGoType() == GAMEOBJECT_TYPE_CHEST && gameObject->GetLootState() == GO_READY)
+                    {
+                        const SpellEntry* spellInfo = spell->m_spellInfo;
+                        for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+                        {
+                            if (spellInfo->Effect[i] == SPELL_EFFECT_OPEN_LOCK)
+                            {
+                                uint32 lockId = gameObject->GetGOInfo()->GetLockId();
+                                if (const LockEntry* lockInfo = sLockStore.LookupEntry(lockId))
+                                {
+                                    for (uint8 i = 0; i < 8; ++i)
+                                    {
+                                        if (lockInfo->Type[i] == LOCK_KEY_SKILL)
+                                        {
+                                            uint32 skillId = SkillByLockType(LockType(lockInfo->Index[i]));
+                                            if (skillId != SKILL_NONE)
+                                            {
+                                                uint32 reqSkillValue = lockInfo->Skill[i];
+                                                uint32 skillValue = player->GetSkillValue(skillId);
+
+                                                float xpPct = 0.0f;
+                                                if (skillValue < reqSkillValue + 25) // orange
+                                                {
+                                                    xpPct = GetConfig()->xpOnGatheringOrangePct * 0.01f;
+                                                }
+                                                else if (skillValue < reqSkillValue + 50) // yellow
+                                                {
+                                                    xpPct = GetConfig()->xpOnGatheringYellowPct * 0.01f;
+                                                }
+                                                else if (skillValue < reqSkillValue + 100) // green
+                                                {
+                                                    xpPct = GetConfig()->xpOnGatheringGreenPct * 0.01f;
+                                                }
+
+                                                if (xpPct > 0.0f)
+                                                {
+                                                    uint32 xp = player->GetUInt32Value(PLAYER_NEXT_LEVEL_XP) * xpPct;
+                                                    player->GiveXP(xp, nullptr);
+                                                    if (Pet* pet = player->GetPet())
+                                                    {
+                                                        pet->GivePetXP(xp);
+                                                    }
+                                                }
+
+                                                return;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     bool ImmersiveModule::OnRespawn(Creature* creature, time_t& respawnTime)
     {
         if (GetConfig()->enabled && GetConfig()->disableInstanceRespawn)

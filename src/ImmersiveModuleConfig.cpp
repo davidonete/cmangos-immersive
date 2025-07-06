@@ -42,6 +42,10 @@ namespace cmangos_module
     , xpOnPvPKillBgMult(0.0f)
     , xpOnPvPKillArenaMult(0.0f)
     , xpOnPvPKillWorldMult(0.0f)
+    , xpOnGathering(false)
+    , xpOnGatheringOrangePct(0.0f)
+    , xpOnGatheringYellowPct(0.0f)
+    , xpOnGatheringGreenPct(0.0f)
     {
 
     }
@@ -86,6 +90,10 @@ namespace cmangos_module
         xpOnPvPKillBgMult = config.GetFloatDefault("Immersive.GiveXPOnPvpBgMult", 0.0f);
         xpOnPvPKillArenaMult = config.GetFloatDefault("Immersive.GiveXPOnPvpArenaMult", 0.0f);
         xpOnPvPKillWorldMult = config.GetFloatDefault("Immersive.GiveXPOnPvpWorldMult", 0.0f);
+        xpOnGathering = config.GetBoolDefault("Immersive.GiveXPOnGathering", false);
+        xpOnGatheringOrangePct = config.GetFloatDefault("Immersive.GiveXPOnGatheringOrangePct", 0.0f);
+        xpOnGatheringYellowPct = config.GetFloatDefault("Immersive.GiveXPOnGatheringYellowPct", 0.0f);
+        xpOnGatheringGreenPct = config.GetFloatDefault("Immersive.GiveXPOnGatheringGreenPct", 0.0f);
         return true;
     }
 }

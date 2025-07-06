@@ -52,6 +52,9 @@ namespace cmangos_module
         void OnLoadFromDB(Player* player) override;
         void OnSaveToDB(Player* player) override;
 
+        // Spell Hooks
+        void OnCast(Spell* spell, Unit* caster, Unit* victim) override;
+
         // Creature Hooks
         bool OnRespawn(Creature* creature, time_t& respawnTime) override;
         void OnRespawnRequest(Creature* creature) override;

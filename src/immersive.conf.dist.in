@@ -167,6 +167,23 @@
 #		The multiplier of xp given when killing a player in the open world (must be positive)
 #		Default: 1.0
 #
+#	Immersive.GiveXPOnGathering
+#		If player gathering herbs, mining should give experience
+#       Default: 0 (Disabled)
+#                1 (Enabled)
+#
+#	Immersive.GiveXPOnGatheringOrangePct
+#		The percentage of xp given when gathering herbs, mining with orange skill level (must be positive)
+#		Default: 0.0
+#
+#	Immersive.GiveXPOnGatheringYellowPct
+#		The percentage of xp given when gathering herbs, mining with yellow skill level (must be positive)
+#		Default: 0.0
+#
+#	Immersive.GiveXPOnGatheringGreenPct
+#		The percentage of xp given when gathering herbs, mining with green skill level (must be positive)
+#		Default: 0.0
+#
 ###################################################################################################################
 
 Immersive.Enable = 0
@@ -208,3 +225,7 @@ Immersive.GiveXPOnPvp = 0
 Immersive.GiveXPOnPvpBgMult = 2.0
 Immersive.GiveXPOnPvpArenaMult = 1.0
 Immersive.GiveXPOnPvpWorldMult = 1.0
+Immersive.GiveXPOnGathering = 0
+Immersive.GiveXPOnGatheringOrangePct = 0.5
+Immersive.GiveXPOnGatheringYellowPct = 0.25
+Immersive.GiveXPOnGatheringGreenPct = 0.125

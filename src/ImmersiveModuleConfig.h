@@ -121,5 +121,9 @@ namespace cmangos_module
         float xpOnPvPKillBgMult;
         float xpOnPvPKillArenaMult;
         float xpOnPvPKillWorldMult;
+        bool xpOnGathering;
+        float xpOnGatheringOrangePct;
+        float xpOnGatheringYellowPct;
+        float xpOnGatheringGreenPct;
     };
 }
