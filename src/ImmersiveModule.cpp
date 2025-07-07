@@ -976,7 +976,7 @@ namespace cmangos_module
                 // Check if the player is on the range between the expansion max level and the set max level
                 if (player->GetLevel() < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
                 {
-                    if (gameObject->GetGoType() == GAMEOBJECT_TYPE_CHEST && gameObject->GetLootState() == GO_READY)
+                    if (gameObject->GetGoType() == GAMEOBJECT_TYPE_CHEST && gameObject->GetLootState() == GO_READY && !gameObject->IsInSkillupList(player))
                     {
                         const SpellEntry* spellInfo = spell->m_spellInfo;
                         for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
